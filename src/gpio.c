@@ -27,13 +27,10 @@
 // and GPIO documentation at https://siliconlabs.github.io/Gecko_SDK_Doc/efm32g/html/group__GPIO.html
 // to determine the correct values for these.
 
-#define LED0_port  0 // change to correct ports and pins
-#define LED0_pin   0
-#define LED1_port  0
-#define LED1_pin   0
-
-
-
+#define LED0_port  (gpioPortF) // Port F for LED 0
+#define LED0_pin   (4)         //Pin 4 is connected to LED 0
+#define LED1_port  (gpioPortF) //Port F for LED 1
+#define LED1_pin   (5)         //Pin 5 is connected to LED 1
 
 
 #include "gpio.h"

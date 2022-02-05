@@ -53,8 +53,10 @@
 #include "src/ble_device_type.h"
 #include "src/gpio.h"
 #include "src/lcd.h"
-
-
+#include "src/timers.h"
+#include "src/oscillators.h"
+#include "src/irq.h"
+#include "src/scheduler.h"
 
 // See: https://docs.silabs.com/gecko-platform/latest/service/power_manager/overview
 #if defined(SL_CATALOG_POWER_MANAGER_PRESENT)
@@ -68,8 +70,8 @@
 //   up the MCU from the call to sl_power_manager_sleep() in the main while (1)
 //   loop.
 // Students: We'll need to modify this for A2 onward.
-#define APP_IS_OK_TO_SLEEP      (false)
-//#define APP_IS_OK_TO_SLEEP      (true)
+//#define APP_IS_OK_TO_SLEEP      (false)
+#define APP_IS_OK_TO_SLEEP      (true)
 
 // Return values for app_sleep_on_isr_exit():
 //   SL_POWER_MANAGER_IGNORE; // The module did not trigger an ISR and it doesn't want to contribute to the decision
@@ -96,6 +98,7 @@
 
 
 #include "app.h"
+#include "src/i2c.h"
 
 
 
@@ -148,35 +151,30 @@ sl_power_manager_on_isr_exit_t app_sleep_on_isr_exit(void)
  *****************************************************************************/
 SL_WEAK void app_init(void)
 {
-  // Put your application 1-time initialization code here.
-  // This is called once during start-up.
-  // Don't call any Bluetooth API functions until after the boot event.
 
+  int  em_mode = LOWEST_ENERGY_MODE;
 
-  // Student Edit: Add a call to gpioInit() here
-  
+  //Depending on the energy mode chosen, use the sl_power_manager function calls
+  switch(em_mode)
+  {
 
+    case 1: sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
 
+    break;
 
+    case 2: sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
 
-}
+    break;
 
-
-/*****************************************************************************
- * delayApprox(), private to this file.
- * A value of 3500000 is ~ 1 second. After assignment 1 you can delete or
- * comment out this function. Wait loops are a bad idea in general.
- * We'll discuss how to do this a better way in the next assignment.
- *****************************************************************************/
-static void delayApprox(int delay)
-{
-  volatile int i;
-
-  for (i = 0; i < delay; ) {
-      i=i+1;
+    default: break;
   }
 
-} // delayApprox()
+  oscillator_init();                //Initialize the oscillator tree
+
+  letimer_init();                   //Initialize the LETIMER0 peripheral
+
+  letimer_irq_init();               //Initialize the LETIMER0 interrupts
+}
 
 
 
@@ -186,22 +184,15 @@ static void delayApprox(int delay)
  *****************************************************************************/
 SL_WEAK void app_process_action(void)
 {
-  // Put your application code here.
-  // This is called repeatedly from the main while(1) loop
-  // Notice: This function is not passed or has access to Bluetooth stack events.
-  //         We will create/use a scheme that is far more energy efficient in
-  //         later assignments.
+  uint32_t currentEvent;
 
-  delayApprox(3500000);
-
-  gpioLed0SetOn();
-  //gpioLed1SetOn();
-
-  delayApprox(3500000);
-
-  gpioLed0SetOff();
-  //gpioLed1SetOff();
-
+  currentEvent = getCurrentEvent();             //Get the event set
+  switch (currentEvent)
+  {
+    case event_LETIMER0_UF:
+      getTempReadings();                        //Get temperature readings
+      break;
+  }
 }
 
 /**************************************************************************//**
@@ -215,7 +206,7 @@ SL_WEAK void app_process_action(void)
  *****************************************************************************/
 void sl_bt_on_event(sl_bt_msg_t *evt)
 {
-  
+
   // Just a trick to hide a compiler warning about unused input parameter evt.
   (void) evt;
 
@@ -226,8 +217,8 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
 
   // sequence through states driven by events
   // state_machine(evt);    // put this code in scheduler.c/.h
-  
-  
-   
+
+
+
 } // sl_bt_on_event()
 

@@ -14,7 +14,11 @@
 
 
 
-
+#define SCL_PIN (10)
+#define SDA_PIN (11)
+#define SENSOR_ENABLE_PIN (15)
+#define SCL_POSITION (14)
+#define SDA_POSITION (16)
 
 
 
@@ -26,6 +30,10 @@ void gpioLed0SetOn();
 void gpioLed0SetOff();
 void gpioLed1SetOn();
 void gpioLed1SetOff();
+void i2c_gpioInit();
+void i2c_gpioDeInit();
+void sensorEnable();
+void sensorDisable();
 
 
 

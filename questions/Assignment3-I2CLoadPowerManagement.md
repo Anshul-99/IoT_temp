@@ -1,19 +1,11 @@
+## ECEN 5823 IoT Embedded Firmware - Assignment 3
+### Author: Khyati Satta
+### Date: 4 February 2022
 
-Please include your answers to the questions below with your submission, entering into the space below each question
 
-See [Mastering Markdown](https://guides.github.com/features/mastering-markdown/) for github markdown formatting if desired.
 
-  
 
-*Be sure to take measurements with logging disabled to ensure your logging logic is not impacting current/time measurements.*
-
-  
-
-*Please include screenshots of the profiler window detailing each current measurement captured. See the file Instructions to add screenshots in assignment.docx in the ECEN 5823 Student Public Folder.*
-
-  
-
-1. What is the average current per period?
+### 1. What is the average current per period?
 
 Answer: 145.66 uA
 
@@ -21,7 +13,7 @@ Answer: 145.66 uA
 
 ![Avg_current_per_period](/screenshots/Avg_current_per_period.png?raw=true)
 
-2. What is the average current when the Si7021 is Powered Off?
+### 2. What is the average current when the Si7021 is Powered Off?
 
 Answer: 2.22 uA
 
@@ -29,7 +21,7 @@ Answer: 2.22 uA
 
 ![Avg_current_lpmOFF](/screenshots/Avg_current_lpmOFF.png?raw=true)
 
-3. What is the average current when the Si7021 is Powered On?
+### 3. What is the average current when the Si7021 is Powered On?
 
 Answer:  4.54 mA
 
@@ -37,7 +29,7 @@ Answer:  4.54 mA
 
 ![Avg_current_lpmON](/screenshots/Avg_current_lpmON.png?raw=true)
 
-4. How long is the Si7021 Powered On for 1 temperature reading?
+### 4. How long is the Si7021 Powered On for 1 temperature reading?
 
 Answer: 92.80 ms
 

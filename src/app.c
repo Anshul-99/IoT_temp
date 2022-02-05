@@ -195,11 +195,6 @@ SL_WEAK void app_process_action(void)
       getTempReadings();                        //Get temperature readings
       break;
   }
-
-//  gpioLed0SetOn();
-//  time_delay(1000000);
-//  gpioLed0SetOff();
-//  time_delay(1000000);
 }
 
 /**************************************************************************//**

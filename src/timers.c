@@ -111,7 +111,7 @@ void time_delay(uint32_t time_us)
 
   current_time = get_current_tick();
 
-  //Run blocking function for the number of ticks calculated for the required delay
+  //Run blocking function for the number of ticks
   for (int i= 0; i < main_loop_val ; i++)
     {
       if(current_time < time_ticks)

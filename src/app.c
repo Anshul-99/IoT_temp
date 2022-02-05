@@ -169,6 +169,8 @@ SL_WEAK void app_init(void)
     default: break;
   }
 
+  gpioInit();
+
   oscillator_init();                //Initialize the oscillator tree
 
   letimer_init();                   //Initialize the LETIMER0 peripheral
@@ -193,6 +195,11 @@ SL_WEAK void app_process_action(void)
       getTempReadings();                        //Get temperature readings
       break;
   }
+
+//  gpioLed0SetOn();
+//  time_delay(1000000);
+//  gpioLed0SetOff();
+//  time_delay(1000000);
 }
 
 /**************************************************************************//**

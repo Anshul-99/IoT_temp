@@ -9,7 +9,7 @@
 #ifndef TIMERS_H
 #define TIMERS_H
 
-#define PRESCALAR_VALUE (2)
+#define PRESCALAR_VALUE (4)
 
 /*
  * Initializes the LETIMER0

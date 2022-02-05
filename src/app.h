@@ -46,7 +46,7 @@
 #ifndef APP_H
 #define APP_H
 
-#define LOWEST_ENERGY_MODE (3)
+#define LOWEST_ENERGY_MODE (2)
 #define LETIMER_ON_TIME_MS (175)
 #define LETIMER_PERIOD_MS (3000)
 

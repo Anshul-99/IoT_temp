@@ -1,3 +1,4 @@
+Author: Khyati Satta
 
 1. What is the average current per period?
    Answer: 31.76 uA

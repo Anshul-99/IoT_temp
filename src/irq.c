@@ -43,7 +43,7 @@ void letimer_irq_init()
        if(LETIMER0 -> IEN != UNDERFLOW_INT_BIT)
          {
            LOG_ERROR("\r\nASSERT: Interrupt not enabled\r\n");
-           __BKPT(0);
+//           __BKPT(0);
          }
      }
 
@@ -80,7 +80,7 @@ void LETIMER0_IRQHandler(void)
              if(LETIMER0 -> IFC != 0)
                {
                  LOG_ERROR("\r\nASSERT: Interrupt not cleared\r\n");
-                 __BKPT(0);
+//                 __BKPT(0);
                }
            }
       setSchedulerEventTemp();
@@ -99,7 +99,7 @@ void LETIMER0_IRQHandler(void)
                    if(LETIMER0 -> IFC != 0)
                      {
                        LOG_ERROR("\r\nASSERT: Interrupt not cleared\r\n");
-                       __BKPT(0);
+//                       __BKPT(0);
                      }
                  }
       setSchedulerEventDelay();                           //At COMP1 event, set time delay complete event

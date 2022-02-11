@@ -185,7 +185,7 @@ void timerWaitUs_irq(uint32_t time_us)
       if(LETIMER0 -> IEN != LETIMER_INT_BITS)
         {
           LOG_ERROR("\r\nASSERT: Interrupt not enabled\r\n");
-          __BKPT(0);
+//          __BKPT(0);
         }
     }
 }

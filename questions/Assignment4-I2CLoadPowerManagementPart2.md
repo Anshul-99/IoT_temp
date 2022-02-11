@@ -25,4 +25,10 @@ Author: Khyati Satta
    
 6. How has the power consumption performance of your design changed since the previous assignment?
    Answer: The average power consumption in the previous assignment due to polling approach for both timers and I2C transfers was around 505.17 uW and now in this assignment due to interrupt-based approach for both, the average power consumption has gone down to around 95 uW resulting in a five-fold decrease.
+
+7.  Describe how you tested your code for EM1 during I2C transfers.
+    Answer: The code was designed in such a way that the I2C transfers occur in EM1 mode. The interrupt-based approach pulls the MCU out of EM1 to EM0 when the I2C transfer has to occur using the handler.The transfer itself occurs in EM1 mode. The following has been explained in the screenshot attached below:
+    <br>Screenshot: 
+   ![I2C_Transfer](/screenshots/I2C_Transfer.jpg?raw=true)  
+
    

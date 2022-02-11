@@ -21,7 +21,7 @@ Author: Khyati Satta
    ![duration_lpm_on](/screenshots/avg_current_lpm_on.jpg?raw=true)  
 
 5. Compute what the total operating time of your design for assignment 4 would be in hours, assuming a 1000mAh battery power supply?
-   <br>Answer: Battery life = (Battery capacity (in mAh)/ Device Consumption (in mA)) = (1000/0.031) = ~ 32,258 hours
+   <br>Answer: Battery life = (Battery capacity (in mAh)/ Device Consumption (in mAh)) = (1000/37.2) = ~ 26 hours 52 minutes
    
 6. How has the power consumption performance of your design changed since the previous assignment?
    <br>Answer: The average power consumption in the previous assignment due to polling approach for both timers and I2C transfers was around 505.17 uW and now in this assignment due to interrupt-based approach for both, the average power consumption has gone down to around 95 uW resulting in a five-fold decrease.

@@ -3,12 +3,15 @@
  * @brief   :   Headers and function definitions for I2C protocol for temperature sensor
  *
  * @author  :   Khyati Satta [khyati.satta@colorado.edu]
- * @date    :   2 February 2022
+ * @date    :   10 February 2022
  *
  */
 
 #ifndef I2Q_H
 #define I2Q_H
+
+#include "stdbool.h"
+
 
 typedef enum
 {
@@ -18,6 +21,7 @@ typedef enum
   I2C_READ_ERROR = -3,
   I2C_ERROR = -4
 }error_t;
+
 
 /*
  * Initializes the I2C0 peripheral
@@ -32,27 +36,40 @@ error_t i2c_temp_init();
 
 
 /*
- * I2C write command
- *
- * Parameters:
- *   uint8_t write_data: Data/Command to be sent
- *
- * Returns:
- *   Error code
- */
-error_t i2cWrite(uint8_t write_data);
-
-
-/*
  * I2C read command
  *
  * Parameters:
- *   int no_bytes: Number of bytes to be read
+ *   None
  *
  * Returns:
- *   Error code
+ *   None
  */
-error_t i2cRead(int no_bytes);
+void receiveI2C_command();
+
+
+/*
+ * I2C write command
+ *
+ * Parameters:
+ *   None
+ *
+ * Returns:
+ *   None
+ */
+void sendI2C_command();
+
+
+/*
+ * Enables/Disables the I2C0 peripheral
+ *
+ * Parameters:
+ *   bool val: true: Enables the I2C0 peripheral
+ *             false: Disables the I2C0 peripheral
+ *
+ * Returns:
+ *   None
+ */
+void loadpowerTempSensor(bool val);
 
 
 /*

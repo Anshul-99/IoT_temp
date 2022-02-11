@@ -3,7 +3,7 @@
  * @brief   :   API for I2C protocol for temperature sensor
  *
  * @author  :   Khyati Satta [khyati.satta@colorado.edu]
- * @date    :   2 February 2022
+ * @date    :   10 February 2022
  *
  */
 
@@ -12,6 +12,7 @@
 #include "src/i2c.h"
 #include "src/gpio.h"
 #include "src/timers.h"
+#include "src/scheduler.h"
 
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -22,14 +23,15 @@
 //Temperature measurement sequence
 #define SI7021_TEMP_SENSOR_SEQ (0xF3)
 
-
 typedef uint8_t temp_data_t;
 
 //Global buffer for I2C read
 temp_data_t read_data[2];
 
+//Global variable for sending command over I2C
+temp_data_t cmd_data;
+
 I2C_TransferSeq_TypeDef i2c_temp_sensor_transfer;
-I2C_TransferReturn_TypeDef i2c_temp_sensor_transfer_result;
 
 
 /*
@@ -70,32 +72,31 @@ error_t i2c_temp_init()
  * I2C write command
  *
  * Parameters:
- *   uint8_t write_data: Data/Command to be sent
+ *   None
  *
  * Returns:
- *   Error code
+ *   None
  */
-error_t i2cWrite(uint8_t write_data)
+void sendI2C_command()
 {
-  if(SUCCESS != i2c_temp_init())
-    return I2C_ERROR;
+  I2C_TransferReturn_TypeDef i2c_temp_sensor_transfer_result;
 
+  if(SUCCESS != i2c_temp_init())
+    LOG_ERROR("\r\nI2C Init Failed\r\n");
+
+  cmd_data = SI7021_TEMP_SENSOR_SEQ;
   i2c_temp_sensor_transfer.addr = (SI7021_TEMP_SENSOR_ADDR << 1);
   i2c_temp_sensor_transfer.flags = I2C_FLAG_WRITE;
-  i2c_temp_sensor_transfer.buf[0].data = &write_data;
-  i2c_temp_sensor_transfer.buf[0].len = sizeof(write_data);
+  i2c_temp_sensor_transfer.buf[0].data = &cmd_data;
+  i2c_temp_sensor_transfer.buf[0].len = sizeof(cmd_data);
 
-  i2c_temp_sensor_transfer_result =  I2CSPM_Transfer(I2C0, &i2c_temp_sensor_transfer);
+  NVIC_EnableIRQ(I2C0_IRQn);                                                                       //Enable I2C0 interrupts
 
-  if(i2c_temp_sensor_transfer_result != i2cTransferDone)
-    {
-      LOG_ERROR("I2CSPM_Transfer: I2C bus write failed");
-      return I2C_WRITE_ERROR;
-    }
+  i2c_temp_sensor_transfer_result = I2C_TransferInit(I2C0, &i2c_temp_sensor_transfer);             //Initialize I2C0 Transfer
 
+  if (i2c_temp_sensor_transfer_result < 0)
+    LOG_ERROR("\r\nI2C_TransferInit() Write error = %d\r\n", i2c_temp_sensor_transfer_result);
 
-  else
-      return SUCCESS;
 }
 
 
@@ -103,27 +104,27 @@ error_t i2cWrite(uint8_t write_data)
  * I2C read command
  *
  * Parameters:
- *   int no_bytes: Number of bytes to be read
+ *   None
  *
  * Returns:
- *   Error code
+ *   None
  */
-error_t i2cRead(int no_bytes)
+void receiveI2C_command()
 {
+  I2C_TransferReturn_TypeDef i2c_temp_sensor_transfer_result;
+
+  cmd_data = SI7021_TEMP_SENSOR_SEQ;
   i2c_temp_sensor_transfer.addr = (SI7021_TEMP_SENSOR_ADDR << 1);
   i2c_temp_sensor_transfer.flags = I2C_FLAG_READ;
-  i2c_temp_sensor_transfer.buf[0].data = read_data ;
-  i2c_temp_sensor_transfer.buf[0].len = no_bytes;
+  i2c_temp_sensor_transfer.buf[0].data = read_data;
+  i2c_temp_sensor_transfer.buf[0].len = sizeof(read_data);
 
-  i2c_temp_sensor_transfer_result =  I2CSPM_Transfer(I2C0, &i2c_temp_sensor_transfer);
+  NVIC_EnableIRQ(I2C0_IRQn);                                                                  //Enable I2C0 interrupts
 
-  if(i2c_temp_sensor_transfer_result != i2cTransferDone)
-    {
-      LOG_ERROR("I2CSPM_Transfer: I2C bus read failed");
-      return I2C_READ_ERROR;
-    }
-  else
-      return SUCCESS;
+  i2c_temp_sensor_transfer_result = I2C_TransferInit(I2C0, &i2c_temp_sensor_transfer);        //Initialize I2C0 Transfer
+
+  if (i2c_temp_sensor_transfer_result < 0)
+    LOG_ERROR("I2C_TransferInit() Read error = %d\r\n", i2c_temp_sensor_transfer_result);
 }
 
 
@@ -144,8 +145,6 @@ void loadpowerTempSensor(bool val)
       i2c_gpioInit();          //Initialize the sensor enable pin
 
       sensorEnable();          //Enable the sensor
-
-      time_delay(80000);       //Wait for 80 ms [Setup time]
     }
 
   if (val == false)
@@ -155,6 +154,7 @@ void loadpowerTempSensor(bool val)
       sensorDisable();         //Clear the sensor enable pin
     }
 }
+
 
 /*
  * Temperature measurement
@@ -169,23 +169,11 @@ void getTempReadings()
 {
   float final_temp_read = 0;
 
-  loadpowerTempSensor(true);                                              //Power ON the sensor
-
-  if (SUCCESS != i2cWrite(SI7021_TEMP_SENSOR_SEQ))                        //Send temperature measurement command to sensor
-    LOG_ERROR("\r\nI2C write command error: Temperature measurement command sequence\r\n");
-
-  time_delay(10000);                                                      //Wait for 10 ms for master to write to the slaves
-
-  if (SUCCESS != i2cRead(2))                                              //Read 2 bytes of temperature data from the sensor
-    LOG_ERROR("\r\nI2C read command error: Temperature measurement command sequence\r\n");
-
-  loadpowerTempSensor(false);                                            //Power OFF the sensor
-
   uint16_t temp_total = (read_data[0] << 8) | (read_data[1]);            //Concatenate the temperature data into one 16 bit variable
 
   final_temp_read = (((175.72 * temp_total)/65536) - 46.85);             //Get actual temperature from raw data
 
-  LOG_INFO("\r\nTemperature in degree Celsius is %d\r\n", (int)final_temp_read);
+  LOG_INFO("\r\nTemperature in degC: %d\r\n", (int)final_temp_read);   //Output the temperature data along with time-stamp on serial console
 
 }
 

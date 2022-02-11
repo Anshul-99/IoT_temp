@@ -1,33 +1,27 @@
-Please include your answers to the questions below with your submission, entering into the space below each question
-See [Mastering Markdown](https://guides.github.com/features/mastering-markdown/) for github markdown formatting if desired.
-
-*Be sure to take measurements with logging disabled to ensure your logging logic is not impacting current/time measurements.*
-
-*Please include screenshots of the profiler window detailing each current measurement captured.  See the file Instructions to add screenshots in assignment.docx in the ECEN 5823 Student Public Folder.* 
 
 1. What is the average current per period?
-   Answer:
+   Answer: 31.76 uA
    <br>Screenshot:  
    ![Avg_current_per_period](screenshots/assignment4/avg_current_per_period.jpg)  
 
 2. What is the average current when the Si7021 is Powered Off?
-   Answer:
+   Answer: 9.42 uA
    <br>Screenshot:  
    ![Avg_current_LPM_Off](screenshots/assignment4/avg_current_lpm_off.jpg)  
 
 3. What is the average current when the Si7021 is Powered On?
-   Answer:
+   Answer: 734.10 uA
    <br>Screenshot:  
-   ![Avg_current_LPM_Off](screenshots/assignment4/avg_current_lpm_on.jpg)  
+   ![Avg_current_LPM_On](screenshots/assignment4/avg_current_lpm_on.jpg)  
 
 4. How long is the Si7021 Powered On for 1 temperature reading?
-   Answer:
+   Answer: 111.50 ms
    <br>Screenshot:  
    ![duration_lpm_on](screenshots/assignment4/avg_current_lpm_on.jpg)  
 
 5. Compute what the total operating time of your design for assignment 4 would be in hours, assuming a 1000mAh battery power supply?
-   Answer:
+   Answer: Battery life = (Battery capacity (in mAh)/ Device Consumption (in mA)) = (1000/0.031) = ~ 32,258 hours
    
 6. How has the power consumption performance of your design changed since the previous assignment?
-   Answer:
+   Answer: The average power consumption in the previous assignment due to polling approach for both timers and I2C transfers was around 505.17 uW and now in this assignment due to interrupt-based approach for both, the average power consumption has gone down to around 95 uW resulting in a five-fold decrease.
    

@@ -3,7 +3,7 @@
  * @brief   :   Header declarations file for oscillators and clock tree initialization
  *
  * @author  :   Khyati Satta [khyati.satta@colorado.edu]
- * @date    :   28 January 2022
+ * @date    :   10 February 2022
  *
  */
 

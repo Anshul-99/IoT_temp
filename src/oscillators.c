@@ -3,12 +3,12 @@
  * @brief   :   API for oscillators and clock tree initialization
  *
  * @author  :   Khyati Satta [khyati.satta@colorado.edu]
- * @date    :   2 February 2022
+ * @date    :   10 February 2022
  *
  */
 
+#include <app.h>
 #include "oscillators.h"
-#include "app.h"
 #include "em_cmu.h"
 #include "src/timers.h"
 

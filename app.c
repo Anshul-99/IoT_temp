@@ -97,8 +97,11 @@
 #endif // defined(SL_CATALOG_POWER_MANAGER_PRESENT)
 
 
-#include "app.h"
+#include <app.h>
 #include "src/i2c.h"
+#include <src/scheduler.h>
+#include "em_i2c.h"
+#include "stdbool.h"
 
 
 
@@ -169,8 +172,6 @@ SL_WEAK void app_init(void)
     default: break;
   }
 
-  gpioInit();
-
   oscillator_init();                //Initialize the oscillator tree
 
   letimer_init();                   //Initialize the LETIMER0 peripheral
@@ -187,14 +188,9 @@ SL_WEAK void app_init(void)
 SL_WEAK void app_process_action(void)
 {
   uint32_t currentEvent;
-
   currentEvent = getCurrentEvent();             //Get the event set
-  switch (currentEvent)
-  {
-    case event_LETIMER0_UF:
-      getTempReadings();                        //Get temperature readings
-      break;
-  }
+
+  temperature_state_machine(currentEvent);      //Pass the event set to the state machine
 }
 
 /**************************************************************************//**
@@ -223,4 +219,7 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
 
 
 } // sl_bt_on_event()
+
+
+
 

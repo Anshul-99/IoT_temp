@@ -25,7 +25,7 @@
 
 
 #include "gpio.h"
-#include "app.h"
+#include <app.h>
 
 
 // Set GPIO drive strengths and modes of operation

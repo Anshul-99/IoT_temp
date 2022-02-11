@@ -3,7 +3,7 @@
  * @brief   :   Header declarations file for LETIMER peripheral
  *
  * @author  :   Khyati Satta [khyati.satta@colorado.edu]
- * @date    :   2 February 2022
+ * @date    :   10 February 2022
  *
  */
 #ifndef TIMERS_H
@@ -32,7 +32,19 @@ void letimer_init();
  * Returns:
  *   None
  */
-void time_delay(uint32_t time_us);
+void timerWaitUs_polled(uint32_t time_us);
+
+
+/*
+ * Interrupt-based time delay using LETIMER Comp1 interrupts
+ *
+ * Parameters:
+ *   uint32_t time_us: Time in micro-seconds
+ *
+ * Returns:
+ *   None
+ */
+void timerWaitUs_irq(uint32_t time_us);
 
 
 #endif     //TIMERS_H

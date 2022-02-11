@@ -46,7 +46,9 @@
 #ifndef APP_H
 #define APP_H
 
-#define LOWEST_ENERGY_MODE (2)
+#include "em_cmu.h"
+
+#define LOWEST_ENERGY_MODE (3)
 #define LETIMER_ON_TIME_MS (175)
 #define LETIMER_PERIOD_MS (3000)
 

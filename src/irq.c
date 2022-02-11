@@ -3,7 +3,7 @@
  * @brief   :   API for LETIMER IRQ
  *
  * @author  :   Khyati Satta [khyati.satta@colorado.edu]
- * @date    :   2 February 2022
+ * @date    :   10 February 2022
  *
  */
 

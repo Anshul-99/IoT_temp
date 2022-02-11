@@ -3,7 +3,7 @@
  * @brief   :   Header declarations file for LETIMER IRQ
  *
  * @author  :   Khyati Satta [khyati.satta@colorado.edu]
- * @date    :   28 January 2022
+ * @date    :   10 February 2022
  *
  */
 

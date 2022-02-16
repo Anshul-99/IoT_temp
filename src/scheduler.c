@@ -13,6 +13,8 @@
 #include "src/i2c.h"
 #include "sl_power_manager.h"
 #include "src/timers.h"
+#include "sl_bt_api.h"
+#include "src/ble.h"
 
 
 //Global variable for storing the events
@@ -42,6 +44,8 @@ void setSchedulerEventTemp()
 
   getEvent |= event_LETIMER0_UF;           //Set temperature event
 
+  sl_bt_external_signal(event_LETIMER0_UF);
+
   CORE_EXIT_CRITICAL();          //Exit critical section
 }
 
@@ -61,6 +65,8 @@ void setSchedulerEventDelay()
   CORE_ENTER_CRITICAL();          //Enter critical section
 
   getEvent |= event_LETIMER0_COMP1;           //Set temperature event
+
+  sl_bt_external_signal(event_LETIMER0_COMP1);
 
   CORE_EXIT_CRITICAL();          //Exit critical section
 }
@@ -82,6 +88,8 @@ void setSchedulerEventTransferComplete()
 
   getEvent |= event_I2C_Transfer_Complete;           //Set temperature event
 
+  sl_bt_external_signal(event_I2C_Transfer_Complete);
+
   CORE_EXIT_CRITICAL();          //Exit critical section
 }
 
@@ -95,36 +103,36 @@ void setSchedulerEventTransferComplete()
  * Returns:
  *   uint32_t : Event triggered
  */
-uint32_t getCurrentEvent()
-{
-  uint32_t setEvent = 0;
-
-  CORE_DECLARE_IRQ_STATE;
-
-  CORE_ENTER_CRITICAL();               //Enter critical section
-
-  if(getEvent & bit_LETIMER0_UF)          //Check for the event set
-    {
-      setEvent |= event_LETIMER0_UF;
-      getEvent &= ~(bit_LETIMER0_UF);        //Clear the event set
-    }
-
-  if(getEvent & bit_LETIMER_COMP1)          //Check for the event set
-    {
-      setEvent = event_LETIMER0_COMP1;
-      getEvent &= ~(bit_LETIMER_COMP1);        //Clear the event set
-    }
-
-  if(getEvent & bit_I2C_TRANSFER)          //Check for the event set
-    {
-      setEvent = event_I2C_Transfer_Complete;
-      getEvent &= ~(bit_I2C_TRANSFER);        //Clear the event set
-    }
-
-  CORE_EXIT_CRITICAL();              //Enter critical section
-
-  return setEvent;
-}
+//uint32_t getCurrentEvent()
+//{
+//  uint32_t setEvent = 0;
+//
+//  CORE_DECLARE_IRQ_STATE;
+//
+//  CORE_ENTER_CRITICAL();               //Enter critical section
+//
+//  if(getEvent & bit_LETIMER0_UF)          //Check for the event set
+//    {
+//      setEvent |= event_LETIMER0_UF;
+//      getEvent &= ~(bit_LETIMER0_UF);        //Clear the event set
+//    }
+//
+//  if(getEvent & bit_LETIMER_COMP1)          //Check for the event set
+//    {
+//      setEvent = event_LETIMER0_COMP1;
+//      getEvent &= ~(bit_LETIMER_COMP1);        //Clear the event set
+//    }
+//
+//  if(getEvent & bit_I2C_TRANSFER)          //Check for the event set
+//    {
+//      setEvent = event_I2C_Transfer_Complete;
+//      getEvent &= ~(bit_I2C_TRANSFER);        //Clear the event set
+//    }
+//
+//  CORE_EXIT_CRITICAL();              //Enter critical section
+//
+//  return setEvent;
+//}
 
 /*
  * State Machine for temperature measurement
@@ -135,7 +143,7 @@ uint32_t getCurrentEvent()
  * Returns:
  *   None
  */
-void temperature_state_machine(uint32_t event)
+void temperature_state_machine(sl_bt_msg_t *evt)
 {
   state_t currentState;
 
@@ -148,7 +156,7 @@ void temperature_state_machine(uint32_t event)
     case state0_IDLE:
       nextState = state0_IDLE;
 
-      if (event == event_LETIMER0_UF)
+      if (evt == event_LETIMER0_UF)
         {
           loadpowerTempSensor(true);                                 //Power ON the temperature sensor
 
@@ -161,7 +169,7 @@ void temperature_state_machine(uint32_t event)
     case state1_COMP1_POWER_ON:
       nextState = state1_COMP1_POWER_ON;
 
-      if(event == event_LETIMER0_COMP1)                             //Event when the timer delay elapses
+      if(evt == event_LETIMER0_COMP1)                             //Event when the timer delay elapses
         {
           sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);  //While transfer is in progress, put the MCU in EM1 energy mode
 
@@ -174,7 +182,7 @@ void temperature_state_machine(uint32_t event)
     case state2_I2C_TRANSFER_COMPLETE:
       nextState = state2_I2C_TRANSFER_COMPLETE;
 
-      if(event == event_I2C_Transfer_Complete)                    //Event when the I2C transfer is completed
+      if(evt == event_I2C_Transfer_Complete)                    //Event when the I2C transfer is completed
         {
           sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);      //Pull MCU out of EM1 mode
 
@@ -187,7 +195,7 @@ void temperature_state_machine(uint32_t event)
     case state3_COMP1_I2C_TRANSFER_COMPLETE:
       nextState = state3_COMP1_I2C_TRANSFER_COMPLETE;
 
-      if(event == event_LETIMER0_COMP1)                       //Event when the write sequence is written
+      if(evt == event_LETIMER0_COMP1)                       //Event when the write sequence is written
         {
           sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);   //While transfer is in progress, put the MCU in EM1 energy mode
 
@@ -200,7 +208,7 @@ void temperature_state_machine(uint32_t event)
     case state4_UNDERFLOW_READ:
       nextState = state4_UNDERFLOW_READ;
 
-      if(event == event_I2C_Transfer_Complete)             //Event when the I2C transfer is completed
+      if(evt == event_I2C_Transfer_Complete)             //Event when the I2C transfer is completed
         {
           sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);      //Pull MCU out of EM1 mode
 

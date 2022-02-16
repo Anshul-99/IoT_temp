@@ -187,10 +187,10 @@ SL_WEAK void app_init(void)
  *****************************************************************************/
 SL_WEAK void app_process_action(void)
 {
-  uint32_t currentEvent;
-  currentEvent = getCurrentEvent();             //Get the event set
-
-  temperature_state_machine(currentEvent);      //Pass the event set to the state machine
+//  uint32_t currentEvent;
+//  currentEvent = getCurrentEvent();             //Get the event set
+//
+//  temperature_state_machine(currentEvent);      //Pass the event set to the state machine
 }
 
 /**************************************************************************//**
@@ -211,10 +211,10 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
   // Some events require responses from our application code,
   // and don’t necessarily advance our state machines.
   // For assignment 5 uncomment the next 2 function calls
-  // handle_ble_event(evt); // put this code in ble.c/.h
+   handle_ble_event(evt); // put this code in ble.c/.h
 
   // sequence through states driven by events
-  // state_machine(evt);    // put this code in scheduler.c/.h
+   temperature_state_machine(evt);    // put this code in scheduler.c/.h
 
 
 

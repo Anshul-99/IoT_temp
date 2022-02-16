@@ -10,7 +10,7 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
-
+#include "src/ble.h"
 //Event enum
 typedef enum
 {
@@ -77,7 +77,7 @@ void setSchedulerEventTransferComplete();
  * Returns:
  *   uint32_t : Event triggered
  */
-uint32_t getCurrentEvent();
+//uint32_t getCurrentEvent();
 
 
 /*
@@ -89,7 +89,7 @@ uint32_t getCurrentEvent();
  * Returns:
  *   None
  */
-void temperature_state_machine(uint32_t event);
+void temperature_state_machine(sl_bt_msg_t *evt);
 
 #endif  //SCHEDULER_H
 

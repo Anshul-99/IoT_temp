@@ -166,7 +166,7 @@ void loadpowerTempSensor(bool val)
  *   None
  *
  * Returns:
- *   None
+ *   uint32_t temperature
  */
 uint32_t getTempReadings()
 {
@@ -179,6 +179,6 @@ uint32_t getTempReadings()
 
   LOG_INFO("\r\nTemperature in degC: %d\r\n", (int)final_temp_read);   //Output the temperature data along with time-stamp on serial console
 
-  return (uint32_t)(final_temp_read);
+  return (final_temp_read);
 }
 

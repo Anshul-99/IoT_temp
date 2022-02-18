@@ -3,7 +3,7 @@
  * @brief   :   API for event scheduler
  *
  * @author  :   Khyati Satta [khyati.satta@colorado.edu]
- * @date    :   10 February 2022
+ * @date    :   16 February 2022
  *
  */
 
@@ -42,7 +42,7 @@ void setSchedulerEventTemp()
 
   CORE_ENTER_CRITICAL();          //Enter critical section
 
-  sl_bt_external_signal(event_LETIMER0_UF);
+  sl_bt_external_signal(event_LETIMER0_UF);   //using BLE's stack to set an event
 
   CORE_EXIT_CRITICAL();          //Exit critical section
 }
@@ -62,7 +62,7 @@ void setSchedulerEventDelay()
 
   CORE_ENTER_CRITICAL();          //Enter critical section
 
-  sl_bt_external_signal(event_LETIMER0_COMP1);
+  sl_bt_external_signal(event_LETIMER0_COMP1);   //using BLE's stack to set an event
 
   CORE_EXIT_CRITICAL();          //Exit critical section
 }
@@ -82,7 +82,7 @@ void setSchedulerEventTransferComplete()
 
   CORE_ENTER_CRITICAL();          //Enter critical section
 
-  sl_bt_external_signal(event_I2C_Transfer_Complete);
+  sl_bt_external_signal(event_I2C_Transfer_Complete);    //using BLE's stack to set an event
 
   CORE_EXIT_CRITICAL();          //Exit critical section
 }
@@ -92,7 +92,7 @@ void setSchedulerEventTransferComplete()
  * State Machine for temperature measurement
  *
  * Parameters:
- *   uint32_t event: Gives the current event set
+ *   sl_bt_msg_t event: Gives the current event set from the external signals data structure of the Bluetooth Stack
  *
  * Returns:
  *   None
@@ -182,23 +182,27 @@ void temperature_state_machine(sl_bt_msg_t *evt)
           htm_temperature_flt = UINT32_TO_FLOAT(temp_in_C*1000, -3);
 
           UINT32_TO_BITSTREAM(p, htm_temperature_flt);
-          //          LOG_INFO("\r\nConnection handle: %d", bleData->is_connection);
-          //          LOG_INFO("\r\nIndication Enabled: %d", bleData->is_indication_enabled);
-          //          LOG_INFO("\r\nIndication in flight: %d", bleData->is_indication_in_flight);
+          //          LOG_INFO("\r\nConnection handle: %d\r\n", bleData->is_connection);
+          //          LOG_INFO("\r\nIndication Enabled: %d\r\n", bleData->is_indication_enabled);
+          //          LOG_INFO("\r\nIndication in flight: %d\r\n", bleData->is_indication_in_flight);
 
-          if((bleData->is_connection == true) && (bleData->is_indication_enabled ==  true) && (bleData->is_indication_in_flight == false))
+
+          //Only write to local GATT database if there is a connection present, if the indicate button is enabled on the GUI
+          if((bleData->is_connection == true) && (bleData->is_indication_enabled ==  true))
             {
-              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_temperature_measurement,  0,  1,  p);
+              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_temperature_measurement,  0,  5,  p);          //Update the local GATT database
               if(error_status != SL_STATUS_OK)
                 LOG_ERROR("\r\nUpdating Local Gatt-Database Error\r\n");
+            }
 
-
-              error_status = sl_bt_gatt_server_send_indication(bleData->connectionSetHandle, gattdb_temperature_measurement, 5, &htm_temperature_buffer[0]);
-
+          //Only send indication if there is a connection present, if the indicate button is enabled on the GUI and no other indication is in flight
+          if((bleData->is_connection == true) && (bleData->is_indication_enabled ==  true) && (bleData->is_indication_in_flight == false))
+            {
+              error_status = sl_bt_gatt_server_send_indication(bleData->connectionSetHandle, gattdb_temperature_measurement, 5, &htm_temperature_buffer[0]);   //Send an indication with the temperature data buffer
               if(error_status != SL_STATUS_OK)
                 LOG_ERROR("\r\nSending Indication Error\r\n");
               else
-                bleData->is_indication_in_flight = true;
+                bleData->is_indication_in_flight = true;      //Set the flag to true if indication was sent
             }
           nextState = state0_IDLE;
         }

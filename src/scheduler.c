@@ -15,10 +15,10 @@
 #include "src/timers.h"
 #include "sl_bt_api.h"
 #include "src/ble.h"
+#include "gatt_db.h"
 
-
-//Global variable for storing the events
-static uint32_t getEvent = 0;
+#define INCLUDE_LOG_DEBUG 1
+#include "src/log.h"
 
 
 //Bits for the event
@@ -42,8 +42,6 @@ void setSchedulerEventTemp()
 
   CORE_ENTER_CRITICAL();          //Enter critical section
 
-  getEvent |= event_LETIMER0_UF;           //Set temperature event
-
   sl_bt_external_signal(event_LETIMER0_UF);
 
   CORE_EXIT_CRITICAL();          //Exit critical section
@@ -63,8 +61,6 @@ void setSchedulerEventDelay()
   CORE_DECLARE_IRQ_STATE;
 
   CORE_ENTER_CRITICAL();          //Enter critical section
-
-  getEvent |= event_LETIMER0_COMP1;           //Set temperature event
 
   sl_bt_external_signal(event_LETIMER0_COMP1);
 
@@ -86,53 +82,11 @@ void setSchedulerEventTransferComplete()
 
   CORE_ENTER_CRITICAL();          //Enter critical section
 
-  getEvent |= event_I2C_Transfer_Complete;           //Set temperature event
-
   sl_bt_external_signal(event_I2C_Transfer_Complete);
 
   CORE_EXIT_CRITICAL();          //Exit critical section
 }
 
-
-/*
- * Returns the current event triggered.
- *
- * Parameters:
- *   None
- *
- * Returns:
- *   uint32_t : Event triggered
- */
-//uint32_t getCurrentEvent()
-//{
-//  uint32_t setEvent = 0;
-//
-//  CORE_DECLARE_IRQ_STATE;
-//
-//  CORE_ENTER_CRITICAL();               //Enter critical section
-//
-//  if(getEvent & bit_LETIMER0_UF)          //Check for the event set
-//    {
-//      setEvent |= event_LETIMER0_UF;
-//      getEvent &= ~(bit_LETIMER0_UF);        //Clear the event set
-//    }
-//
-//  if(getEvent & bit_LETIMER_COMP1)          //Check for the event set
-//    {
-//      setEvent = event_LETIMER0_COMP1;
-//      getEvent &= ~(bit_LETIMER_COMP1);        //Clear the event set
-//    }
-//
-//  if(getEvent & bit_I2C_TRANSFER)          //Check for the event set
-//    {
-//      setEvent = event_I2C_Transfer_Complete;
-//      getEvent &= ~(bit_I2C_TRANSFER);        //Clear the event set
-//    }
-//
-//  CORE_EXIT_CRITICAL();              //Enter critical section
-//
-//  return setEvent;
-//}
 
 /*
  * State Machine for temperature measurement
@@ -145,6 +99,15 @@ void setSchedulerEventTransferComplete()
  */
 void temperature_state_machine(sl_bt_msg_t *evt)
 {
+  ble_data_struct_t *bleData;
+  sl_status_t error_status;
+
+  bleData = getBleDataPtr();
+
+  uint8_t htm_temperature_buffer[5];
+  uint8_t *p = &htm_temperature_buffer[1];
+  uint32_t htm_temperature_flt;
+
   state_t currentState;
 
   static state_t nextState = state0_IDLE;                             //First state is Idle by default
@@ -156,7 +119,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
     case state0_IDLE:
       nextState = state0_IDLE;
 
-      if (evt == event_LETIMER0_UF)
+      if (evt->data.evt_system_external_signal.extsignals == event_LETIMER0_UF)
         {
           loadpowerTempSensor(true);                                 //Power ON the temperature sensor
 
@@ -169,7 +132,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
     case state1_COMP1_POWER_ON:
       nextState = state1_COMP1_POWER_ON;
 
-      if(evt == event_LETIMER0_COMP1)                             //Event when the timer delay elapses
+      if(evt->data.evt_system_external_signal.extsignals == event_LETIMER0_COMP1)                             //Event when the timer delay elapses
         {
           sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);  //While transfer is in progress, put the MCU in EM1 energy mode
 
@@ -182,7 +145,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
     case state2_I2C_TRANSFER_COMPLETE:
       nextState = state2_I2C_TRANSFER_COMPLETE;
 
-      if(evt == event_I2C_Transfer_Complete)                    //Event when the I2C transfer is completed
+      if(evt->data.evt_system_external_signal.extsignals == event_I2C_Transfer_Complete)                    //Event when the I2C transfer is completed
         {
           sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);      //Pull MCU out of EM1 mode
 
@@ -195,7 +158,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
     case state3_COMP1_I2C_TRANSFER_COMPLETE:
       nextState = state3_COMP1_I2C_TRANSFER_COMPLETE;
 
-      if(evt == event_LETIMER0_COMP1)                       //Event when the write sequence is written
+      if(evt->data.evt_system_external_signal.extsignals == event_LETIMER0_COMP1)                       //Event when the write sequence is written
         {
           sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);   //While transfer is in progress, put the MCU in EM1 energy mode
 
@@ -208,14 +171,35 @@ void temperature_state_machine(sl_bt_msg_t *evt)
     case state4_UNDERFLOW_READ:
       nextState = state4_UNDERFLOW_READ;
 
-      if(evt == event_I2C_Transfer_Complete)             //Event when the I2C transfer is completed
+      if(evt->data.evt_system_external_signal.extsignals == event_I2C_Transfer_Complete)             //Event when the I2C transfer is completed
         {
           sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);      //Pull MCU out of EM1 mode
 
           loadpowerTempSensor(false);                     //Power OFF the sensor
           NVIC_DisableIRQ(I2C0_IRQn);                     //Disable the I2C interrupt
-          getTempReadings();                              //Calculate the temperature readings and display on the serial console
+          uint32_t temp_in_C = getTempReadings();                              //Calculate the temperature readings and display on the serial console
 
+          htm_temperature_flt = UINT32_TO_FLOAT(temp_in_C*1000, -3);
+
+          UINT32_TO_BITSTREAM(p, htm_temperature_flt);
+          //          LOG_INFO("\r\nConnection handle: %d", bleData->is_connection);
+          //          LOG_INFO("\r\nIndication Enabled: %d", bleData->is_indication_enabled);
+          //          LOG_INFO("\r\nIndication in flight: %d", bleData->is_indication_in_flight);
+
+          if((bleData->is_connection == true) && (bleData->is_indication_enabled ==  true) && (bleData->is_indication_in_flight == false))
+            {
+              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_temperature_measurement,  0,  1,  p);
+              if(error_status != SL_STATUS_OK)
+                LOG_ERROR("\r\nUpdating Local Gatt-Database Error\r\n");
+
+
+              error_status = sl_bt_gatt_server_send_indication(bleData->connectionSetHandle, gattdb_temperature_measurement, 5, &htm_temperature_buffer[0]);
+
+              if(error_status != SL_STATUS_OK)
+                LOG_ERROR("\r\nSending Indication Error\r\n");
+              else
+                bleData->is_indication_in_flight = true;
+            }
           nextState = state0_IDLE;
         }
       break;

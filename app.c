@@ -208,9 +208,6 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
   // Just a trick to hide a compiler warning about unused input parameter evt.
   (void) evt;
 
-  // Some events require responses from our application code,
-  // and don’t necessarily advance our state machines.
-  // For assignment 5 uncomment the next 2 function calls
    handle_ble_event(evt); // put this code in ble.c/.h
 
   // sequence through states driven by events

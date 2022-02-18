@@ -7,19 +7,20 @@
  *
  */
 
-#include "ble.h"
+#include "src/ble.h"
 #include "stdbool.h"
+#include "gatt_db.h"
 
 // Include logging specifically for this .c file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
 
-#define MAX_ADVERTISING_TIME (400)
-#define MIN_ADVERTISING_TIME (400)
-#define MAX_CONNECTION_TIME (60)
-#define MIN_CONNECTION_TIME (60)
-#define SLAVE_LATENCY (300)
-#define CONNECTION_TIMEOUT (2260)
+#define MAX_ADVERTISING_TIME (0x190)
+#define MIN_ADVERTISING_TIME (0x190)
+#define MAX_CONNECTION_TIME (0x3C)
+#define MIN_CONNECTION_TIME (0x3C)
+#define SLAVE_LATENCY (3)
+#define CONNECTION_TIMEOUT (70)
 
 ble_data_struct_t ble_data;
 
@@ -28,85 +29,92 @@ ble_data_struct_t* getBleDataPtr()
   return (&ble_data);
 }
 
-
 void handle_ble_event(sl_bt_msg_t *evt)
 {
-  ble_data_struct_t* ble_device = getBleDataPtr();
+  sl_status_t error_status;
 
-  sl_status_t ret_val;
-
-  uint32_t event;
+  getBleDataPtr();
 
   switch (SL_BT_MSG_ID(evt->header))
   {
-
     case sl_bt_evt_system_boot_id:
-
-      ret_val =  sl_bt_system_get_identity_address(&ble_device->myAddress, &ble_device->myAddressType);
-      if(ret_val != 0)
+      error_status =  sl_bt_system_get_identity_address(&ble_data.myAddress, &ble_data.myAddressType);
+      if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Booting Error\r\n");
 
-      ret_val = sl_bt_advertiser_create_set(&ble_device->advertisingSetHandle);
-      if(ret_val != 0)
+      error_status = sl_bt_advertiser_create_set(&ble_data.advertisingSetHandle);
+      if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Handle Setting Error\r\n");
 
-
-      ret_val = sl_bt_advertiser_set_timing(ble_device->advertisingSetHandle, MAX_ADVERTISING_TIME, MIN_ADVERTISING_TIME , 0 , 0);
-      if(ret_val != 0)
+      error_status = sl_bt_advertiser_set_timing(ble_data.advertisingSetHandle, MIN_ADVERTISING_TIME, MAX_ADVERTISING_TIME , 0 , 0);
+      if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Handle Setting Timing Parameters Error\r\n");
 
-      ret_val = sl_bt_advertiser_start(ble_device->advertisingSetHandle, sl_bt_advertiser_general_discoverable, sl_bt_advertiser_connectable_scannable);
-      if(ret_val != 0)
+      //TODO: Check about the parameters
+      error_status = sl_bt_advertiser_start(ble_data.advertisingSetHandle, sl_bt_advertiser_general_discoverable, sl_bt_advertiser_connectable_scannable);
+      ble_data.is_connection = false;
+      if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Start Error\r\n");
-      else
-        ble_device->is_connection = false;
+
       // handle boot event
       break;
 
     case sl_bt_evt_connection_opened_id:
+      ble_data.connectionSetHandle = evt->data.evt_connection_opened.connection;
 
-      ble_device->connectionSetHandle = evt->data.evt_connection_opened.connection;
-
-      ret_val = sl_bt_advertiser_stop(ble_device->advertisingSetHandle);
-      if(ret_val != 0)
+      error_status = sl_bt_advertiser_stop(ble_data.advertisingSetHandle);
+      ble_data.is_connection = true;
+      if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Stop Error\r\n");
-      else
-        ble_device->is_connection = true;
 
-      ret_val = sl_bt_connection_set_parameters(ble_device->connectionSetHandle, MIN_CONNECTION_TIME , MAX_CONNECTION_TIME,SLAVE_LATENCY, CONNECTION_TIMEOUT, 0, MAX_CONNECTION_TIME);
+
+      error_status = sl_bt_connection_set_parameters(ble_data.connectionSetHandle, MIN_CONNECTION_TIME , MAX_CONNECTION_TIME, SLAVE_LATENCY, CONNECTION_TIMEOUT, 0, 0xFFFF);
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nBluetooth Advertising Connection Setup Error\r\n");
 
       // handle open event
       break;
 
     case sl_bt_evt_connection_closed_id:
-
-      ret_val = sl_bt_advertiser_start(ble_device->advertisingSetHandle , sl_bt_advertiser_general_discoverable, sl_bt_advertiser_connectable_scannable);
-      if(ret_val != 0)
+      error_status = sl_bt_advertiser_start(ble_data.advertisingSetHandle , sl_bt_advertiser_general_discoverable, sl_bt_advertiser_connectable_scannable);
+      ble_data.is_connection = false;
+      if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Start Error\r\n");
-      else
-        ble_device->is_connection = false;
 
       // handle close event
       break;
 
     case sl_bt_evt_connection_parameters_id:
-
-      LOG_INFO("\r\nThe time-interval is %u", evt->data.evt_connection_parameters.interval);
-      LOG_INFO("\r\nThe latency is %u", evt->data.evt_connection_parameters.latency);
-      LOG_INFO("\r\nThe timeout is %u", evt->data.evt_connection_parameters.timeout);
+      LOG_INFO("\r\nThe time-interval is %d\r\n", evt->data.evt_connection_parameters.interval);
+      LOG_INFO("\r\nThe latency is %d\r\n", evt->data.evt_connection_parameters.latency);
+      LOG_INFO("\r\nThe timeout is %d\r\n", evt->data.evt_connection_parameters.timeout);
 
       break;
 
     case sl_bt_evt_system_external_signal_id:
-      event = sl_bt_evt_system_external_signal_id;
-      evt->data.evt_system_external_signal.extsignals = evt;
+      //      ble_data.eventSet =  evt->data.evt_system_external_signal.extsignals;
+      //      LOG_INFO("\r\nExternal interrupt triggered\r\n");
 
       break;
 
     case sl_bt_evt_gatt_server_characteristic_status_id:
+      if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_indication))
+        ble_data.is_indication_enabled = true;
+      else
+        ble_data.is_indication_enabled = false;
+
+      if (evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement && (evt->data.evt_gatt_server_characteristic_status.status_flags == sl_bt_gatt_server_confirmation))
+        {
+          if(evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_confirmation)
+            {
+              ble_data.is_indication_in_flight = false;
+            }
+        }
       break;
 
     case sl_bt_evt_gatt_server_indication_timeout_id:
+      LOG_ERROR("\r\nBluetooth Server Time-out error\r\n");
+      ble_data.is_indication_in_flight = true;
       break;
   }
 }

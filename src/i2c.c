@@ -13,6 +13,9 @@
 #include "src/gpio.h"
 #include "src/timers.h"
 #include "src/scheduler.h"
+#include "src/ble.h"
+#include "gatt_db.h"
+
 
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -165,15 +168,17 @@ void loadpowerTempSensor(bool val)
  * Returns:
  *   None
  */
-void getTempReadings()
+uint32_t getTempReadings()
 {
-  float final_temp_read = 0;
 
-  uint16_t temp_total = (read_data[0] << 8) | (read_data[1]);            //Concatenate the temperature data into one 16 bit variable
+  uint32_t final_temp_read = 0;
+
+  uint32_t temp_total = (read_data[0] << 8) | (read_data[1]);            //Concatenate the temperature data into one 16 bit variable
 
   final_temp_read = (((175.72 * temp_total)/65536) - 46.85);             //Get actual temperature from raw data
 
   LOG_INFO("\r\nTemperature in degC: %d\r\n", (int)final_temp_read);   //Output the temperature data along with time-stamp on serial console
 
+  return (uint32_t)(final_temp_read);
 }
 

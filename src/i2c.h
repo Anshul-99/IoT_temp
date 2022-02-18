@@ -82,6 +82,6 @@ void loadpowerTempSensor(bool val);
  * Returns:
  *   None
  */
-void getTempReadings();
+uint32_t getTempReadings();
 
 #endif  //I2Q_H

@@ -177,7 +177,7 @@ uint32_t getTempReadings()
 
   final_temp_read = (((175.72 * temp_total)/65536) - 46.85);             //Get actual temperature from raw data
 
-  LOG_INFO("\r\nTemperature in degC: %d\r\n", (int)final_temp_read);   //Output the temperature data along with time-stamp on serial console
+//  LOG_INFO("\r\nTemperature in degC: %d\r\n", (int)final_temp_read);   //Output the temperature data along with time-stamp on serial console
 
   return (final_temp_read);
 }

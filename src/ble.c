@@ -17,10 +17,10 @@
 
 
 //Advertising and Connection Timing Parameters
-#define MAX_ADVERTISING_TIME (0x190)
-#define MIN_ADVERTISING_TIME (0x190)
-#define MAX_CONNECTION_TIME (0x3C)
-#define MIN_CONNECTION_TIME (0x3C)
+#define MAX_ADVERTISING_TIME (400)
+#define MIN_ADVERTISING_TIME (400)
+#define MAX_CONNECTION_TIME (60)
+#define MIN_CONNECTION_TIME (60)
 #define MIN_CE_LENGTH (0)
 #define MAX_CE_LENGTH (0xFFFF)
 #define SLAVE_LATENCY (3)
@@ -137,7 +137,7 @@ void handle_ble_event(sl_bt_msg_t *evt)
 
     case sl_bt_evt_connection_closed_id:
       error_status = sl_bt_advertiser_start(ble_data.advertisingSetHandle , sl_bt_advertiser_general_discoverable, sl_bt_advertiser_connectable_scannable);    //When connection is closed, start advertising again
-      LOG_INFO("\r\nConnection: %d closed due to: %d\r\n", evt->data.evt_connection_closed.connection, evt->data.evt_connection_closed.reason);
+//      LOG_INFO("\r\nConnection: %d closed due to: %d\r\n", evt->data.evt_connection_closed.connection, evt->data.evt_connection_closed.reason);
       ble_data.is_connection = false;
       ble_data.is_indication_enabled = false;
       if(error_status != SL_STATUS_OK)

@@ -147,7 +147,11 @@ void temperature_state_machine(sl_bt_msg_t *evt)
             }
         }
       else
-        nextState = state0_IDLE;
+        {
+          nextState = state0_IDLE;
+          loadpowerTempSensor(false);
+        }
+
 
       break;
 
@@ -166,7 +170,12 @@ void temperature_state_machine(sl_bt_msg_t *evt)
             }
         }
       else
-        nextState = state0_IDLE;
+        {
+          nextState = state0_IDLE;
+          loadpowerTempSensor(false);
+          sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+        }
+
       break;
 
     case state3_COMP1_I2C_TRANSFER_COMPLETE:
@@ -184,7 +193,10 @@ void temperature_state_machine(sl_bt_msg_t *evt)
             }
         }
       else
-        nextState = state0_IDLE;
+        {
+          nextState = state0_IDLE;
+          loadpowerTempSensor(false);
+        }
       break;
 
     case state4_UNDERFLOW_READ:
@@ -203,9 +215,9 @@ void temperature_state_machine(sl_bt_msg_t *evt)
               htm_temperature_flt = UINT32_TO_FLOAT(temp_in_C*1000, -3);
 
               UINT32_TO_BITSTREAM(p, htm_temperature_flt);
-//              LOG_INFO("\r\nConnection handle: %d\r\n", bleData->is_connection);
-//              LOG_INFO("\r\nIndication Enabled: %d\r\n", bleData->is_indication_enabled);
-//              LOG_INFO("\r\nIndication in flight: %d\r\n", bleData->is_indication_in_flight);
+              //              LOG_INFO("\r\nConnection handle: %d\r\n", bleData->is_connection);
+              //              LOG_INFO("\r\nIndication Enabled: %d\r\n", bleData->is_indication_enabled);
+              //              LOG_INFO("\r\nIndication in flight: %d\r\n", bleData->is_indication_in_flight);
 
 
               //Only write to local GATT database if there is a connection present, if the indicate button is enabled on the GUI
@@ -228,7 +240,11 @@ void temperature_state_machine(sl_bt_msg_t *evt)
           nextState = state0_IDLE;
         }
       else
-        nextState = state0_IDLE;
+        {
+          nextState = state0_IDLE;
+          loadpowerTempSensor(false);
+          sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+        }
       break;
 
     default:

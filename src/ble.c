@@ -29,7 +29,7 @@
 #define ADVERTISING_MAX_EVENTS (0)
 
 //Data structure instance
-ble_data_struct_t ble_data;
+ble_data_struct_t ble_data ;
 
 
 /*
@@ -60,8 +60,6 @@ void handle_ble_event(sl_bt_msg_t *evt)
 {
   sl_status_t error_status;
 
-  getBleDataPtr();
-
   switch (SL_BT_MSG_ID(evt->header))                                                                           //Switching data on the header information
   {
     case sl_bt_evt_system_boot_id:
@@ -77,101 +75,94 @@ void handle_ble_event(sl_bt_msg_t *evt)
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Handle Setting Timing Parameters Error\r\n");
 
-      //TODO: Check about the parameters
       error_status = sl_bt_advertiser_start(ble_data.advertisingSetHandle, sl_bt_advertiser_general_discoverable, sl_bt_advertiser_connectable_scannable);   //Start advertising from the client
-
+      ble_data.is_connection = false;
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Start Error\r\n");
-      else
-        ble_data.is_connection = false;
 
-      // handle boot event
       break;
 
-//      PACKSTRUCT( struct sl_bt_evt_connection_opened_s
-//      {
-//        bd_addr address;      /**< Remote device address */
-//        uint8_t address_type; /**< Enum @ref sl_bt_gap_address_type_t. Remote device
-//                                   address type. Values:
-//                                     - <b>sl_bt_gap_public_address (0x0):</b> Public
-//                                       device address
-//                                     - <b>sl_bt_gap_static_address (0x1):</b> Static
-//                                       device address
-//                                     - <b>sl_bt_gap_random_resolvable_address
-//                                       (0x2):</b> Resolvable private random address
-//                                     - <b>sl_bt_gap_random_nonresolvable_address
-//                                       (0x3):</b> Non-resolvable private random
-//                                       address */
-//        uint8_t master;       /**< Device role in connection. Values:
-//                                     - <b>0:</b> Peripheral
-//                                     - <b>1:</b> Central */
-//        uint8_t connection;   /**< Handle for new connection */
-//        uint8_t bonding;      /**< Bonding handle. Values:
-//                                     - <b>SL_BT_INVALID_BONDING_HANDLE (0xff):</b> No
-//                                       bonding
-//                                     - <b>Other:</b> Bonding handle */
-//        uint8_t advertiser;   /**< The local advertising set that this connection was
-//                                   opened to. Values:
-//                                     - <b>SL_BT_INVALID_ADVERTISING_SET_HANDLE
-//                                       (0xff):</b> Invalid value or not applicable.
-//                                       Ignore this field
-//                                     - <b>Other:</b> The advertising set handle */
-//      })
+      //      PACKSTRUCT( struct sl_bt_evt_connection_opened_s
+      //      {
+      //        bd_addr address;      /**< Remote device address */
+      //        uint8_t address_type; /**< Enum @ref sl_bt_gap_address_type_t. Remote device
+      //                                   address type. Values:
+      //                                     - <b>sl_bt_gap_public_address (0x0):</b> Public
+      //                                       device address
+      //                                     - <b>sl_bt_gap_static_address (0x1):</b> Static
+      //                                       device address
+      //                                     - <b>sl_bt_gap_random_resolvable_address
+      //                                       (0x2):</b> Resolvable private random address
+      //                                     - <b>sl_bt_gap_random_nonresolvable_address
+      //                                       (0x3):</b> Non-resolvable private random
+      //                                       address */
+      //        uint8_t master;       /**< Device role in connection. Values:
+      //                                     - <b>0:</b> Peripheral
+      //                                     - <b>1:</b> Central */
+      //        uint8_t connection;   /**< Handle for new connection */
+      //        uint8_t bonding;      /**< Bonding handle. Values:
+      //                                     - <b>SL_BT_INVALID_BONDING_HANDLE (0xff):</b> No
+      //                                       bonding
+      //                                     - <b>Other:</b> Bonding handle */
+      //        uint8_t advertiser;   /**< The local advertising set that this connection was
+      //                                   opened to. Values:
+      //                                     - <b>SL_BT_INVALID_ADVERTISING_SET_HANDLE
+      //                                       (0xff):</b> Invalid value or not applicable.
+      //                                       Ignore this field
+      //                                     - <b>Other:</b> The advertising set handle */
+      //      })
     case sl_bt_evt_connection_opened_id:
       ble_data.connectionSetHandle = evt->data.evt_connection_opened.connection;              //Save the connection handle
 
       error_status = sl_bt_advertiser_stop(ble_data.advertisingSetHandle);                    //Stop the advertising since a new connection is found
-
+      ble_data.is_connection = true;
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Stop Error\r\n");
-      else
-        ble_data.is_connection = true;
 
 
       error_status = sl_bt_connection_set_parameters(ble_data.connectionSetHandle, MIN_CONNECTION_TIME , MAX_CONNECTION_TIME, SLAVE_LATENCY, CONNECTION_TIMEOUT, MIN_CE_LENGTH, MAX_CE_LENGTH);      //Set timing parameters for the new connection
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Connection Setup Error\r\n");
 
-      // handle open event
       break;
 
     case sl_bt_evt_connection_closed_id:
       error_status = sl_bt_advertiser_start(ble_data.advertisingSetHandle , sl_bt_advertiser_general_discoverable, sl_bt_advertiser_connectable_scannable);    //When connection is closed, start advertising again
-//      LOG_INFO("\r\nConnection: %d closed due to: %d\r\n", evt->data.evt_connection_closed.connection, evt->data.evt_connection_closed.reason);
+      //      LOG_INFO("\r\nConnection: %d closed due to: %d\r\n", evt->data.evt_connection_closed.connection, evt->data.evt_connection_closed.reason);
       ble_data.is_connection = false;
       ble_data.is_indication_enabled = false;
+      ble_data.is_indication_in_flight = false;
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Start Error\r\n");
 
-      // handle close event
       break;
 
-//      PACKSTRUCT( struct sl_bt_evt_connection_parameters_s
-//      {
-//        uint8_t  connection;    /**< Connection handle */
-//        uint16_t interval;      /**< Connection interval. Time = Value x 1.25 ms */
-//        uint16_t latency;       /**< Peripheral latency (how many connection intervals
-//                                     the peripheral can skip) */
-//        uint16_t timeout;       /**< Supervision timeout. Time = Value x 10 ms */
-//        uint8_t  security_mode; /**< Enum @ref sl_bt_connection_security_t. Connection
-//                                     security mode. Values:
-//                                       - <b>sl_bt_connection_mode1_level1 (0x0):</b>
-//                                         No security
-//                                       - <b>sl_bt_connection_mode1_level2 (0x1):</b>
-//                                         Unauthenticated pairing with encryption
-//                                       - <b>sl_bt_connection_mode1_level3 (0x2):</b>
-//                                         Authenticated pairing with encryption
-//                                       - <b>sl_bt_connection_mode1_level4 (0x3):</b>
-//                                         Authenticated Secure Connections pairing with
-//                                         encryption using a 128-bit strength
-//                                         encryption key */
-//        uint16_t txsize;        /**< Maximum Data Channel PDU Payload size that the
-//                                     controller can send in an air packet */
-//      })
+      //      PACKSTRUCT( struct sl_bt_evt_connection_parameters_s
+      //      {
+      //        uint8_t  connection;    /**< Connection handle */
+      //        uint16_t interval;      /**< Connection interval. Time = Value x 1.25 ms */
+      //        uint16_t latency;       /**< Peripheral latency (how many connection intervals
+      //                                     the peripheral can skip) */
+      //        uint16_t timeout;       /**< Supervision timeout. Time = Value x 10 ms */
+      //        uint8_t  security_mode; /**< Enum @ref sl_bt_connection_security_t. Connection
+      //                                     security mode. Values:
+      //                                       - <b>sl_bt_connection_mode1_level1 (0x0):</b>
+      //                                         No security
+      //                                       - <b>sl_bt_connection_mode1_level2 (0x1):</b>
+      //                                         Unauthenticated pairing with encryption
+      //                                       - <b>sl_bt_connection_mode1_level3 (0x2):</b>
+      //                                         Authenticated pairing with encryption
+      //                                       - <b>sl_bt_connection_mode1_level4 (0x3):</b>
+      //                                         Authenticated Secure Connections pairing with
+      //                                         encryption using a 128-bit strength
+      //                                         encryption key */
+      //        uint16_t txsize;        /**< Maximum Data Channel PDU Payload size that the
+      //                                     controller can send in an air packet */
+      //      })
     case sl_bt_evt_connection_parameters_id:
-      LOG_INFO("\r\nThe time-interval is %d\r\n", evt->data.evt_connection_parameters.interval);          //Log the set parameters
-      LOG_INFO("\r\nThe latency is %d\r\n", evt->data.evt_connection_parameters.latency);
-      LOG_INFO("\r\nThe timeout is %d\r\n", evt->data.evt_connection_parameters.timeout);
+//      LOG_INFO("\r\nThe time-interval is %d milliseconds\r\n", ((evt->data.evt_connection_parameters.interval * 125)/100));          //Log the set parameters
+//      LOG_INFO("\r\nThe latency is %d\r\n", evt->data.evt_connection_parameters.latency);
+//      LOG_INFO("\r\nThe timeout is %d milliseconds\r\n", (evt->data.evt_connection_parameters.timeout * 10));
 
       break;
 
@@ -181,34 +172,34 @@ void handle_ble_event(sl_bt_msg_t *evt)
 
       break;
 
-//      PACKSTRUCT( struct sl_bt_evt_gatt_server_characteristic_status_s
-//      {
-//        uint8_t  connection;          /**< Connection handle */
-//        uint16_t characteristic;      /**< GATT characteristic handle. This value is
-//                                           normally received from the
-//                                           gatt_characteristic event. */
-//        uint8_t  status_flags;        /**< Enum @ref
-//                                           sl_bt_gatt_server_characteristic_status_flag_t.
-//                                           Describes whether Client Characteristic
-//                                           Configuration was changed or if a
-//                                           confirmation was received. Values:
-//                                             - <b>sl_bt_gatt_server_client_config
-//                                               (0x1):</b> Characteristic client
-//                                               configuration has been changed.
-//                                             - <b>sl_bt_gatt_server_confirmation
-//                                               (0x2):</b> Characteristic confirmation
-//                                               has been received. */
-//        uint16_t client_config_flags; /**< Enum @ref
-//                                           sl_bt_gatt_server_client_configuration_t.
-//                                           This field carries the new value of the
-//                                           Client Characteristic Configuration. If the
-//                                           status_flags is 0x2 (confirmation
-//                                           received), the value of this field can be
-//                                           ignored. */
-//        uint16_t client_config;       /**< The handle of client-config descriptor. */
-//      })
+      //      PACKSTRUCT( struct sl_bt_evt_gatt_server_characteristic_status_s
+      //      {
+      //        uint8_t  connection;          /**< Connection handle */
+      //        uint16_t characteristic;      /**< GATT characteristic handle. This value is
+      //                                           normally received from the
+      //                                           gatt_characteristic event. */
+      //        uint8_t  status_flags;        /**< Enum @ref
+      //                                           sl_bt_gatt_server_characteristic_status_flag_t.
+      //                                           Describes whether Client Characteristic
+      //                                           Configuration was changed or if a
+      //                                           confirmation was received. Values:
+      //                                             - <b>sl_bt_gatt_server_client_config
+      //                                               (0x1):</b> Characteristic client
+      //                                               configuration has been changed.
+      //                                             - <b>sl_bt_gatt_server_confirmation
+      //                                               (0x2):</b> Characteristic confirmation
+      //                                               has been received. */
+      //        uint16_t client_config_flags; /**< Enum @ref
+      //                                           sl_bt_gatt_server_client_configuration_t.
+      //                                           This field carries the new value of the
+      //                                           Client Characteristic Configuration. If the
+      //                                           status_flags is 0x2 (confirmation
+      //                                           received), the value of this field can be
+      //                                           ignored. */
+      //        uint16_t client_config;       /**< The handle of client-config descriptor. */
+      //      })
     case sl_bt_evt_gatt_server_characteristic_status_id:
-      if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement) &&  (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_indication)) //Indication enabled flag
+      if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_indication)) //Indication enabled flag
         ble_data.is_indication_enabled = true;
       else
         ble_data.is_indication_enabled = false;
@@ -221,7 +212,7 @@ void handle_ble_event(sl_bt_msg_t *evt)
       break;
 
     case sl_bt_evt_gatt_server_indication_timeout_id:
-      LOG_INFO("\r\nBluetooth Client Indication Acknowledgement Time-out\r\n");
+      //      LOG_INFO("\r\nBluetooth Client Indication Acknowledgement Time-out\r\n");
       if(ble_data.is_indication_in_flight == true)
         ble_data.is_indication_in_flight = false;
       ble_data.is_connection = false;

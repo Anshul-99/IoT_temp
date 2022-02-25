@@ -73,7 +73,7 @@ void handle_ble_event(sl_bt_msg_t *evt)
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Booting Error\r\n");
 
-      displayPrintf(DISPLAY_ROW_BTADDR,"%02x:%02x:%02x:%02x:%02x:%02x",ble_data.myAddress.addr[0], ble_data.myAddress.addr[1], ble_data.myAddress.addr[2], ble_data.myAddress.addr[3] , ble_data.myAddress.addr[4], ble_data.myAddress.addr[5]);
+      displayPrintf(DISPLAY_ROW_BTADDR,"%02x:%02x:%02x:%02x:%02x:%02x",ble_data.myAddress.addr[5], ble_data.myAddress.addr[4], ble_data.myAddress.addr[3], ble_data.myAddress.addr[2] , ble_data.myAddress.addr[1], ble_data.myAddress.addr[0]);
 
       error_status = sl_bt_advertiser_create_set(&ble_data.advertisingSetHandle);                             //Create an advertising handle
       if(error_status != SL_STATUS_OK)

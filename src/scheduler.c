@@ -16,6 +16,7 @@
 #include "sl_bt_api.h"
 #include "src/ble.h"
 #include "gatt_db.h"
+#include "lcd.h"
 
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -123,13 +124,14 @@ void temperature_state_machine(sl_bt_msg_t *evt)
         {
           if (evt->data.evt_system_external_signal.extsignals == event_LETIMER0_UF)
             {
-              loadpowerTempSensor(true);                                 //Power ON the temperature sensor
 
               timerWaitUs_irq(80000);                                    //Wait for 80 msec [Setup time]
 
               nextState = state1_COMP1_POWER_ON;
             }
         }
+      else
+        displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
       break;
 
     case state1_COMP1_POWER_ON:
@@ -149,7 +151,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
       else
         {
           nextState = state0_IDLE;
-          loadpowerTempSensor(false);
+          displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
         }
 
 
@@ -172,8 +174,8 @@ void temperature_state_machine(sl_bt_msg_t *evt)
       else
         {
           nextState = state0_IDLE;
-          loadpowerTempSensor(false);
           sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+          displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
         }
 
       break;
@@ -195,7 +197,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
       else
         {
           nextState = state0_IDLE;
-          loadpowerTempSensor(false);
+          displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
         }
       break;
 
@@ -208,9 +210,10 @@ void temperature_state_machine(sl_bt_msg_t *evt)
             {
               sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);      //Pull MCU out of EM1 mode
 
-              loadpowerTempSensor(false);                     //Power OFF the sensor
               NVIC_DisableIRQ(I2C0_IRQn);                     //Disable the I2C interrupt
               uint32_t temp_in_C = getTempReadings();                              //Calculate the temperature readings and display on the serial console
+
+              displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_C);
 
               htm_temperature_flt = UINT32_TO_FLOAT(temp_in_C*1000, -3);
 
@@ -242,8 +245,8 @@ void temperature_state_machine(sl_bt_msg_t *evt)
       else
         {
           nextState = state0_IDLE;
-          loadpowerTempSensor(false);
           sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+          displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
         }
       break;
 

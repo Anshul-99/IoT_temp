@@ -147,7 +147,7 @@ void loadpowerTempSensor(bool val)
     {
       i2c_gpioInit();          //Initialize the sensor enable pin
 
-      sensorEnable();          //Enable the sensor
+      gpioSensorEnSetOn();          //Enable the sensor
     }
 
   if (val == false)

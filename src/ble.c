@@ -10,6 +10,7 @@
 #include "src/ble.h"
 #include "stdbool.h"
 #include "gatt_db.h"
+#include "src/lcd.h"
 
 // Include logging specifically for this .c file
 #define INCLUDE_LOG_DEBUG 1
@@ -63,9 +64,16 @@ void handle_ble_event(sl_bt_msg_t *evt)
   switch (SL_BT_MSG_ID(evt->header))                                                                           //Switching data on the header information
   {
     case sl_bt_evt_system_boot_id:
+      displayInit();
+
+      displayPrintf(DISPLAY_ROW_NAME, "Server");
+      displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A6");
+
       error_status =  sl_bt_system_get_identity_address(&ble_data.myAddress, &ble_data.myAddressType);        //On booting event, get the device address
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Booting Error\r\n");
+
+      displayPrintf(DISPLAY_ROW_BTADDR,"%02x:%02x:%02x:%02x:%02x:%02x",ble_data.myAddress.addr[0], ble_data.myAddress.addr[1], ble_data.myAddress.addr[2], ble_data.myAddress.addr[3] , ble_data.myAddress.addr[4], ble_data.myAddress.addr[5]);
 
       error_status = sl_bt_advertiser_create_set(&ble_data.advertisingSetHandle);                             //Create an advertising handle
       if(error_status != SL_STATUS_OK)
@@ -77,8 +85,11 @@ void handle_ble_event(sl_bt_msg_t *evt)
 
       error_status = sl_bt_advertiser_start(ble_data.advertisingSetHandle, sl_bt_advertiser_general_discoverable, sl_bt_advertiser_connectable_scannable);   //Start advertising from the client
       ble_data.is_connection = false;
+      displayPrintf(DISPLAY_ROW_CONNECTION, "Advertising");
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Start Error\r\n");
+
+
 
       break;
 
@@ -114,6 +125,8 @@ void handle_ble_event(sl_bt_msg_t *evt)
     case sl_bt_evt_connection_opened_id:
       ble_data.connectionSetHandle = evt->data.evt_connection_opened.connection;              //Save the connection handle
 
+      displayPrintf(DISPLAY_ROW_CONNECTION, "Connected");
+
       error_status = sl_bt_advertiser_stop(ble_data.advertisingSetHandle);                    //Stop the advertising since a new connection is found
       ble_data.is_connection = true;
       if(error_status != SL_STATUS_OK)
@@ -132,8 +145,15 @@ void handle_ble_event(sl_bt_msg_t *evt)
       ble_data.is_connection = false;
       ble_data.is_indication_enabled = false;
       ble_data.is_indication_in_flight = false;
+      displayPrintf(DISPLAY_ROW_CONNECTION, "Advertising");
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Start Error\r\n");
+
+      break;
+
+      //Event to clear the LCD charge every second in repeat mode
+    case sl_bt_evt_system_soft_timer_id:
+      displayUpdate();
 
       break;
 
@@ -160,9 +180,9 @@ void handle_ble_event(sl_bt_msg_t *evt)
       //                                     controller can send in an air packet */
       //      })
     case sl_bt_evt_connection_parameters_id:
-//      LOG_INFO("\r\nThe time-interval is %d milliseconds\r\n", ((evt->data.evt_connection_parameters.interval * 125)/100));          //Log the set parameters
-//      LOG_INFO("\r\nThe latency is %d\r\n", evt->data.evt_connection_parameters.latency);
-//      LOG_INFO("\r\nThe timeout is %d milliseconds\r\n", (evt->data.evt_connection_parameters.timeout * 10));
+      //      LOG_INFO("\r\nThe time-interval is %d milliseconds\r\n", ((evt->data.evt_connection_parameters.interval * 125)/100));          //Log the set parameters
+      //      LOG_INFO("\r\nThe latency is %d\r\n", evt->data.evt_connection_parameters.latency);
+      //      LOG_INFO("\r\nThe timeout is %d milliseconds\r\n", (evt->data.evt_connection_parameters.timeout * 10));
 
       break;
 
@@ -222,6 +242,8 @@ void handle_ble_event(sl_bt_msg_t *evt)
       break;
   }
 }
+
+
 
 
 

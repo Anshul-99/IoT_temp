@@ -22,6 +22,8 @@
 
 #define LED0_port  (gpioPortF) // Port F for LED 0
 #define LED0_pin   (4)         //Pin 4 is connected to LED 0
+#define EXTCOMIN_PORT (gpioPortD)
+#define EXTCOMIN_PIN (13)
 
 
 #include "gpio.h"
@@ -33,6 +35,9 @@ void gpioInit()
 {
   GPIO_DriveStrengthSet(LED0_port, gpioDriveStrengthStrongAlternateStrong);
   GPIO_PinModeSet(LED0_port, LED0_pin, gpioModePushPull, false);
+
+  GPIO_DriveStrengthSet(EXTCOMIN_PORT, gpioDriveStrengthStrongAlternateStrong);
+  GPIO_PinModeSet(EXTCOMIN_PORT, EXTCOMIN_PIN, gpioModePushPull, false);
 
 } // gpioInit()
 
@@ -105,7 +110,7 @@ void i2c_gpioDeInit()
  * Returns:
  *   None
  */
-void sensorEnable()
+void gpioSensorEnSetOn()
 {
   GPIO_PinOutSet(gpioPortD, SENSOR_ENABLE_PIN);
 }
@@ -126,4 +131,18 @@ void sensorDisable()
 }
 
 
-
+/*Toggles the EXTCOMIN pin tyied to the LCD to avoid crystal charge accumulation
+ *
+ * Parameters:
+ *  bool enable: Decides whether to set or clear the EXTCOMIN pin
+ *
+ * Returns:
+ *   None
+ */
+void extcomin_enable(bool enable)
+{
+  if(enable)
+    GPIO_PinOutSet(EXTCOMIN_PORT, EXTCOMIN_PIN);
+  else
+    GPIO_PinOutClear(EXTCOMIN_PORT, EXTCOMIN_PIN);
+}

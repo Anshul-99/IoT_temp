@@ -32,8 +32,9 @@ void gpioLed1SetOn();
 void gpioLed1SetOff();
 void i2c_gpioInit();
 void i2c_gpioDeInit();
-void sensorEnable();
+void gpioSensorEnSetOn();
 void sensorDisable();
+void extcomin_enable(bool enable);
 
 
 

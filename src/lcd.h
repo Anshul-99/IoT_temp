@@ -61,6 +61,7 @@ enum display_row {
 void displayInit();
 void displayUpdate();
 void displayPrintf(enum display_row row, const char *format, ...);
+void gpioSetDisplayExtcomin(bool extcomin_state);
 
 
 

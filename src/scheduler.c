@@ -385,29 +385,6 @@ void discovery_state_machine(sl_bt_msg_t *evt)
         }
       break;
 
-      //    case state4_DEVICE_CONNECTED:
-      //      nextState = state4_DEVICE_CONNECTED;
-      //
-      //      if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_characteristic_value_id)
-      //        {
-      //          nextState = state4_DEVICE_CONNECTED;
-      //          error_status = sl_bt_gatt_send_characteristic_confirmation(bleData->connectionSetHandle);
-      //          if(error_status != SL_STATUS_OK)
-      //            LOG_ERROR("\r\nError fetching characteristic notification confirmation\r\n");
-      //        }
-      //
-      //      else if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_closed_id)
-      //        {
-      //          nextState = state0_NO_CONNECTION;
-      //          error_status = sl_bt_scanner_start(PHYSICAL_LAYER_1M, sl_bt_scanner_discover_observation);
-      //          if(error_status != SL_STATUS_OK)
-      //            LOG_ERROR("\r\nError starting connection scanning\r\n");
-      //          displayPrintf(DISPLAY_ROW_CONNECTION, "Discovering");
-      //          displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
-      //          displayPrintf(DISPLAY_ROW_BTADDR2, " ");
-      //        }
-      //      break;
-
     default:
       break;
   }

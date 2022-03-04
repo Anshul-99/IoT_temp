@@ -38,7 +38,6 @@ typedef enum
   state1_SERVICE_DISCOVERED,
   state2_TEMP_MEASUREMENT_CHAR_ENABLED,
   state3_INDICATION_ENABLED,
-  state4_DEVICE_CONNECTED,
   CLIENT_NUM_STATES
 }client_state_t;
 

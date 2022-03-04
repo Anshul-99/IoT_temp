@@ -283,13 +283,13 @@ void handle_ble_event(sl_bt_msg_t *evt)
 
 #endif
 
-#if (DEVICE_IS_BLE_SERVER == 0)
+#if (DEVICE_IS_BLE_SERVER ==  0)
     case sl_bt_evt_system_boot_id:
       displayInit();
 
       displayPrintf(DISPLAY_ROW_NAME, "Client");
       displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A7");
-      error_status = sl_bt_scanner_set_mode(PASSIVE_SCAN , PHYSICAL_LAYER_1M);
+      error_status = sl_bt_scanner_set_mode(PHYSICAL_LAYER_1M , PASSIVE_SCAN);
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nError mode setting scanner mode\r\n");
       error_status = sl_bt_scanner_set_timing(PHYSICAL_LAYER_1M, SCAN_INTERVAL, SCAN_WINDOW);
@@ -322,8 +322,6 @@ void handle_ble_event(sl_bt_msg_t *evt)
       break;
 
     case sl_bt_evt_connection_opened_id:
-      // ble_data.connectionSetHandle = evt->data.evt_connection_opened.connection;
-
       break;
 
     case  sl_bt_evt_gatt_service_id:

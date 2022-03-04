@@ -20,6 +20,8 @@
 
 #define UINT32_TO_FLOAT(m, e) (((uint32_t)(m) & 0x00FFFFFFU) | (uint32_t)((int32_t)(e) << 24))
 
+#define PHYSICAL_LAYER_1M (1)
+
 
 //Private data structure to store the connection attributes
 typedef struct
@@ -36,6 +38,9 @@ typedef struct
   bool is_connection;
   bool is_indication_in_flight;
   bool is_indication_enabled;
+  uint32_t serviceHandle;
+  uint16_t characteristicHandle;
+  int32_t temp_value;
 } ble_data_struct_t;
 
 /*

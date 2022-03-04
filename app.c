@@ -204,14 +204,21 @@ SL_WEAK void app_process_action(void)
  *****************************************************************************/
 void sl_bt_on_event(sl_bt_msg_t *evt)
 {
-
   // Just a trick to hide a compiler warning about unused input parameter evt.
   (void) evt;
 
   handle_ble_event(evt); // put this code in ble.c/.h
 
+#if DEVICE_IS_BLE_SERVER
+
   // sequence through states driven by events
   temperature_state_machine(evt);    // put this code in scheduler.c/.h
+
+#else
+
+  discovery_state_machine(evt);
+
+#endif
 
 
 

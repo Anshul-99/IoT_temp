@@ -11,6 +11,9 @@
 #include "stdbool.h"
 #include "gatt_db.h"
 #include "src/lcd.h"
+#include "ble_device_type.h"
+#include <math.h>
+
 
 // Include logging specifically for this .c file
 #define INCLUDE_LOG_DEBUG 1
@@ -29,8 +32,43 @@
 #define ADVERTISING_DURATION (0)
 #define ADVERTISING_MAX_EVENTS (0)
 
+#define PASSIVE_SCAN (0)
+#define SCAN_INTERVAL (80)
+#define SCAN_WINDOW (40)
+#define CLIENT_LATENCY (4)
+#define CLIENT_MAX_CE_LENGTH (4)
+#define CLIENT_TIMEOUT (83)
+
 //Data structure instance
 ble_data_struct_t ble_data ;
+
+
+// -----------------------------------------------
+// Private function, original from Dan Walkes. I fixed a sign extension bug.
+// We'll need this for Client A7 assignment to convert health thermometer
+// indications back to an integer. Convert IEEE-11073 32-bit float to signed integer.
+// -----------------------------------------------
+static int32_t FLOAT_TO_INT32(const uint8_t *value_start_little_endian)
+{
+  uint8_t signByte = 0;
+  int32_t mantissa;
+  // input data format is:
+  // [0] = flags byte
+  // [3][2][1] = mantissa (2's complement)
+  // [4] = exponent (2's complement)
+  // BT value_start_little_endian[0] has the flags byte
+  int8_t exponent = (int8_t)value_start_little_endian[4];
+  // sign extend the mantissa value if the mantissa is negative
+  if (value_start_little_endian[3] & 0x80) { // msb of [3] is the sign of the mantissa
+      signByte = 0xFF;
+  }
+  mantissa = (int32_t) (value_start_little_endian[1] << 0) |
+      (value_start_little_endian[2] << 8) |
+      (value_start_little_endian[3] << 16) |
+      (signByte << 24) ;
+  // value = 10^exponent * mantissa, pow() returns a double type
+  return (int32_t) (pow(10, exponent) * mantissa);
+} // FLOAT_TO_INT32
 
 
 /*
@@ -63,11 +101,13 @@ void handle_ble_event(sl_bt_msg_t *evt)
 
   switch (SL_BT_MSG_ID(evt->header))                                                                           //Switching data on the header information
   {
+#if (DEVICE_IS_BLE_SERVER == 1)
+
     case sl_bt_evt_system_boot_id:
       displayInit();
 
       displayPrintf(DISPLAY_ROW_NAME, "Server");
-      displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A6");
+      displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A7");
 
       error_status =  sl_bt_system_get_identity_address(&ble_data.myAddress, &ble_data.myAddressType);        //On booting event, get the device address
       if(error_status != SL_STATUS_OK)
@@ -240,11 +280,80 @@ void handle_ble_event(sl_bt_msg_t *evt)
 
     default:
       break;
+
+#endif
+
+#if (DEVICE_IS_BLE_SERVER == 0)
+    case sl_bt_evt_system_boot_id:
+      displayInit();
+
+      displayPrintf(DISPLAY_ROW_NAME, "Client");
+      displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A7");
+      error_status = sl_bt_scanner_set_mode(PASSIVE_SCAN , PHYSICAL_LAYER_1M);
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError mode setting scanner mode\r\n");
+      error_status = sl_bt_scanner_set_timing(PHYSICAL_LAYER_1M, SCAN_INTERVAL, SCAN_WINDOW);
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError setting up bluetooth timing parameters\r\n");
+      error_status = sl_bt_connection_set_default_parameters(MIN_CONNECTION_TIME, MAX_CONNECTION_TIME, CLIENT_LATENCY , CLIENT_TIMEOUT, MIN_CE_LENGTH, CLIENT_MAX_CE_LENGTH);
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError setting up default parameters for the connection\r\n");
+      error_status = sl_bt_scanner_start(PHYSICAL_LAYER_1M, sl_bt_scanner_discover_observation);
+      displayPrintf(DISPLAY_ROW_CONNECTION, "Discovering");
+
+      error_status =  sl_bt_system_get_identity_address(&ble_data.myAddress, &ble_data.myAddressType);        //On booting event, get the device address
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nBluetooth Booting Error\r\n");
+
+      displayPrintf(DISPLAY_ROW_BTADDR,"%02x:%02x:%02x:%02x:%02x:%02x",ble_data.myAddress.addr[5], ble_data.myAddress.addr[4], ble_data.myAddress.addr[3], ble_data.myAddress.addr[2] , ble_data.myAddress.addr[1], ble_data.myAddress.addr[0]);
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError starting scanning\r\n");
+      break;
+
+    case sl_bt_evt_scanner_scan_report_id:
+      error_status = sl_bt_scanner_stop();
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError stopping scanning\r\n");
+
+      error_status = sl_bt_connection_open(SERVER_BT_ADDRESS, 0, PHYSICAL_LAYER_1M, &ble_data.connectionSetHandle);
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError opening a connection\r\n");
+
+      break;
+
+    case sl_bt_evt_connection_opened_id:
+      // ble_data.connectionSetHandle = evt->data.evt_connection_opened.connection;
+
+      break;
+
+    case  sl_bt_evt_gatt_service_id:
+      ble_data.serviceHandle = evt->data.evt_gatt_service.service;
+      break;
+
+    case sl_bt_evt_gatt_characteristic_id:
+      ble_data.characteristicHandle = evt->data.evt_gatt_characteristic.characteristic;
+      break;
+
+      //Event to clear the LCD charge every second in repeat mode
+    case sl_bt_evt_system_soft_timer_id:
+      displayUpdate();
+      break;
+
+    case sl_bt_evt_gatt_procedure_completed_id:
+      break;
+
+    case sl_bt_evt_gatt_characteristic_value_id:
+      error_status = sl_bt_gatt_send_characteristic_confirmation(ble_data.connectionSetHandle);
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError fetching characteristic notification confirmation\r\n");
+
+      ble_data.temp_value = FLOAT_TO_INT32(evt->data.evt_gatt_characteristic_value.value.data);
+      displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d C", ble_data.temp_value);
+      break;
+
+    case sl_bt_evt_connection_closed_id:
+      break;
+
+#endif
   }
 }
-
-
-
-
-
-

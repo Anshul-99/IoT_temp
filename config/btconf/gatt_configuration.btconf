@@ -125,6 +125,7 @@
       <informativeText/>
       <value length="17" type="hex" variable_length="false"/>
       <properties>
+        <read authenticated="false" bonded="false" encrypted="false"/>
         <indicate authenticated="false" bonded="false" encrypted="false"/>
       </properties>
       

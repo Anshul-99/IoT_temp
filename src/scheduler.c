@@ -17,6 +17,9 @@
 #include "src/ble.h"
 #include "gatt_db.h"
 #include "lcd.h"
+#include "ble_device_type.h"
+#include "ble.h"
+
 
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -27,9 +30,11 @@
 #define bit_LETIMER_COMP1 (2)
 #define bit_I2C_TRANSFER (4)
 
+#define CLIENT_UUID_LEN (2)
+#define CLIENT_UUID (uint8_t [2]){0x09 , 0x18}
 
-/*
- * Sets an event when interrupt is triggered
+
+/* Sets an event when interrupt is triggered
  *
  * Parameters:
  *   None
@@ -109,9 +114,9 @@ void temperature_state_machine(sl_bt_msg_t *evt)
   uint8_t *p = &htm_temperature_buffer[1];
   uint32_t htm_temperature_flt;
 
-  state_t currentState;
+  temp_state_t currentState;
 
-  static state_t nextState = state0_IDLE;                             //First state is Idle by default
+  static temp_state_t nextState = state0_IDLE;                             //First state is Idle by default
 
   currentState = nextState;                                           //Update the current state
 
@@ -213,7 +218,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
               NVIC_DisableIRQ(I2C0_IRQn);                     //Disable the I2C interrupt
               uint32_t temp_in_C = getTempReadings();                              //Calculate the temperature readings and display on the serial console
 
-              displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_C);
+              displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d C", temp_in_C);
 
               htm_temperature_flt = UINT32_TO_FLOAT(temp_in_C*1000, -3);
 
@@ -254,3 +259,157 @@ void temperature_state_machine(sl_bt_msg_t *evt)
       break;
   }
 }
+
+
+/*
+ * State Machine for client discovery
+ *
+ * Parameters:
+ *   sl_bt_msg_t event: Gives the current event set from the external signals data structure of the Bluetooth Stack
+ *
+ * Returns:
+ *   None
+ */
+void discovery_state_machine(sl_bt_msg_t *evt)
+{
+  ble_data_struct_t *bleData;
+  sl_status_t error_status;
+
+  bleData = getBleDataPtr();
+
+  client_state_t currentState;
+
+  static client_state_t nextState = state0_NO_CONNECTION;                             //First state is Idle by default
+
+  currentState = nextState;                                           //Update the current state
+
+  switch(currentState)
+  {
+    case state0_NO_CONNECTION:
+      nextState = state0_NO_CONNECTION;
+
+      if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_opened_id)
+        {
+          nextState = state1_SERVICE_DISCOVERED;
+          displayPrintf(DISPLAY_ROW_CONNECTION, "Connected");
+
+          displayPrintf(DISPLAY_ROW_BTADDR2,"%02x:%02x:%02x:%02x:%02x:%02x",SERVER_BT_ADDRESS.addr[5], SERVER_BT_ADDRESS.addr[4], SERVER_BT_ADDRESS.addr[3], SERVER_BT_ADDRESS.addr[2] , SERVER_BT_ADDRESS.addr[1], SERVER_BT_ADDRESS.addr[0]);
+          error_status = sl_bt_gatt_discover_primary_services_by_uuid(bleData->connectionSetHandle, CLIENT_UUID_LEN , CLIENT_UUID);
+          if(error_status != SL_STATUS_OK)
+            LOG_ERROR("\r\nError discovering a service\r\n");
+        }
+      else
+        {
+          if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_closed_id)
+            {
+              nextState = state0_NO_CONNECTION;
+              error_status = sl_bt_scanner_start(PHYSICAL_LAYER_1M, sl_bt_scanner_discover_observation);
+              if(error_status != SL_STATUS_OK)
+                LOG_ERROR("\r\nError starting connection scanning\r\n");
+              displayPrintf(DISPLAY_ROW_CONNECTION, "Discovering");
+              displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
+              displayPrintf(DISPLAY_ROW_BTADDR2, " ");
+            }
+        }
+      break;
+
+    case state1_SERVICE_DISCOVERED:
+      nextState = state1_SERVICE_DISCOVERED;
+
+      if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id)
+        {
+          nextState = state2_TEMP_MEASUREMENT_CHAR_ENABLED;
+          uint8_t char_uuid[2];
+          char_uuid[0] = 0x1C;
+          char_uuid[1] = 0x2A;
+          error_status = sl_bt_gatt_discover_characteristics_by_uuid(bleData->connectionSetHandle, bleData->serviceHandle, sizeof(char_uuid), char_uuid );
+          if(error_status != SL_STATUS_OK)
+            LOG_ERROR("\r\nError discovering a characteristic\r\n");
+        }
+      else
+        {
+          if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_closed_id)
+            {
+              nextState = state0_NO_CONNECTION;
+              error_status = sl_bt_scanner_start(PHYSICAL_LAYER_1M, sl_bt_scanner_discover_observation);
+              if(error_status != SL_STATUS_OK)
+                LOG_ERROR("\r\nError starting connection scanning\r\n");
+              displayPrintf(DISPLAY_ROW_CONNECTION, "Discovering");
+              displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
+              displayPrintf(DISPLAY_ROW_BTADDR2, " ");
+            }
+        }
+
+      break;
+
+    case state2_TEMP_MEASUREMENT_CHAR_ENABLED:
+      nextState = state2_TEMP_MEASUREMENT_CHAR_ENABLED;
+
+      if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id)
+        {
+          nextState = state3_INDICATION_ENABLED;
+          error_status = sl_bt_gatt_set_characteristic_notification(bleData->connectionSetHandle, bleData->characteristicHandle, sl_bt_gatt_indication);
+          if(error_status != SL_STATUS_OK)
+            LOG_ERROR("\r\nError setting up characteristic notification\r\n");
+          else
+            displayPrintf(DISPLAY_ROW_CONNECTION, "Handling Indications");
+        }
+      else
+        {
+          if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_closed_id)
+            {
+              nextState = state0_NO_CONNECTION;
+              error_status = sl_bt_scanner_start(PHYSICAL_LAYER_1M, sl_bt_scanner_discover_observation);
+              if(error_status != SL_STATUS_OK)
+                LOG_ERROR("\r\nError starting connection scanning\r\n");
+              displayPrintf(DISPLAY_ROW_CONNECTION, "Discovering");
+              displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
+              displayPrintf(DISPLAY_ROW_BTADDR2, " ");
+            }
+        }
+
+      break;
+
+    case state3_INDICATION_ENABLED:
+      nextState = state3_INDICATION_ENABLED;
+
+      if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_closed_id)
+        {
+          nextState = state0_NO_CONNECTION;
+          error_status = sl_bt_scanner_start(PHYSICAL_LAYER_1M, sl_bt_scanner_discover_observation);
+          if(error_status != SL_STATUS_OK)
+            LOG_ERROR("\r\nError starting connection scanning\r\n");
+          displayPrintf(DISPLAY_ROW_CONNECTION, "Discovering");
+          displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
+          displayPrintf(DISPLAY_ROW_BTADDR2, " ");
+        }
+      break;
+
+      //    case state4_DEVICE_CONNECTED:
+      //      nextState = state4_DEVICE_CONNECTED;
+      //
+      //      if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_characteristic_value_id)
+      //        {
+      //          nextState = state4_DEVICE_CONNECTED;
+      //          error_status = sl_bt_gatt_send_characteristic_confirmation(bleData->connectionSetHandle);
+      //          if(error_status != SL_STATUS_OK)
+      //            LOG_ERROR("\r\nError fetching characteristic notification confirmation\r\n");
+      //        }
+      //
+      //      else if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_closed_id)
+      //        {
+      //          nextState = state0_NO_CONNECTION;
+      //          error_status = sl_bt_scanner_start(PHYSICAL_LAYER_1M, sl_bt_scanner_discover_observation);
+      //          if(error_status != SL_STATUS_OK)
+      //            LOG_ERROR("\r\nError starting connection scanning\r\n");
+      //          displayPrintf(DISPLAY_ROW_CONNECTION, "Discovering");
+      //          displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
+      //          displayPrintf(DISPLAY_ROW_BTADDR2, " ");
+      //        }
+      //      break;
+
+    default:
+      break;
+  }
+}
+

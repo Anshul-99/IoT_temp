@@ -11,6 +11,7 @@
 #ifndef SRC_BLE_DEVICE_TYPE_H_
 #define SRC_BLE_DEVICE_TYPE_H_
 #include <stdbool.h>
+#include "sl_bt_api.h"
 
 /*
  * Students:
@@ -23,7 +24,9 @@
 // For your Bluetooth Client implementations.
 // Set this #define to the bd_addr of the Gecko that will be your Server.
 //                   bd_addr  [0]   [1]   [2]   [3]   [4]   [5] <- array indices
-#define SERVER_BT_ADDRESS {{ 0x85, 0x61, 0x17, 0x57, 0x0b, 0x00 }}
+#define SERVER_BT_ADDRESS (bd_addr){.addr = { 0x26, 0x03, 0x92, 0x27, 0xFD, 0x84 }}
+
+//bd_addr server_addr = {{ 0x7E, 0x65, 0xA6, 0x14, 0x2E, 0x84 }};
 
 
 #if DEVICE_IS_BLE_SERVER

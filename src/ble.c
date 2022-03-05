@@ -42,7 +42,7 @@
 //Data structure instance
 ble_data_struct_t ble_data ;
 
-
+#if (DEVICE_IS_BLE_SERVER == 0)
 // -----------------------------------------------
 // Private function, original from Dan Walkes. I fixed a sign extension bug.
 // We'll need this for Client A7 assignment to convert health thermometer
@@ -70,6 +70,7 @@ static int32_t FLOAT_TO_INT32(const uint8_t *value_start_little_endian)
   return (int32_t) (pow(10, exponent) * mantissa);
 } // FLOAT_TO_INT32
 
+#endif
 
 /*
  * Gives an instance of the private BLE data structure

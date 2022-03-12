@@ -21,6 +21,7 @@ static uint32_t log_time = 0;
 #include "src/log.h"
 
 #define UNDERFLOW_INT_BIT (4)
+
 /*
  * Initializes the IRQ in the NVIC for the LETIMER0 peripheral
  *
@@ -35,17 +36,17 @@ void letimer_irq_init()
   LETIMER_IntEnable(LETIMER0, LETIMER_IEN_UF);            //Enable the underflow flag for the LETIMER0 peripheral
   int int_bit = LETIMER0-> IEN;
 
-   if(int_bit != UNDERFLOW_INT_BIT)                                       //Check for if the interrupt bit got set
-     {
-       LOG_ERROR("\r\nUnderflow interrupt not enabled\r\n");
-       LETIMER0 -> IEN |= UNDERFLOW_INT_BIT;
+  if(int_bit != UNDERFLOW_INT_BIT)                                       //Check for if the interrupt bit got set
+    {
+      LOG_ERROR("\r\nUnderflow interrupt not enabled\r\n");
+      LETIMER0 -> IEN |= UNDERFLOW_INT_BIT;
 
-       if(LETIMER0 -> IEN != UNDERFLOW_INT_BIT)
-         {
-           LOG_ERROR("\r\nASSERT: Interrupt not enabled\r\n");
-//           __BKPT(0);
-         }
-     }
+      if(LETIMER0 -> IEN != UNDERFLOW_INT_BIT)
+        {
+          LOG_ERROR("\r\nASSERT: Interrupt not enabled\r\n");
+          //           __BKPT(0);
+        }
+    }
 
   NVIC_ClearPendingIRQ(LETIMER0_IRQn);                     //Clear pending LETIMER0 interrupts
 
@@ -73,16 +74,16 @@ void LETIMER0_IRQHandler(void)
       LETIMER_IntClear(LETIMER0, LETIMER_IFC_UF);      //Clear the set interrupt flag
       int_bit = LETIMER0-> IFC;
       if(int_bit != 0)                                //Check if the bit got cleared
-           {
-             LOG_ERROR("\r\nUnderflow interrupt not cleared\r\n");
-             LETIMER0 -> IFC = LETIMER_IFC_UF;
+        {
+          LOG_ERROR("\r\nUnderflow interrupt not cleared\r\n");
+          LETIMER0 -> IFC = LETIMER_IFC_UF;
 
-             if(LETIMER0 -> IFC != 0)
-               {
-                 LOG_ERROR("\r\nASSERT: Interrupt not cleared\r\n");
-//                 __BKPT(0);
-               }
-           }
+          if(LETIMER0 -> IFC != 0)
+            {
+              LOG_ERROR("\r\nASSERT: Interrupt not cleared\r\n");
+              //                 __BKPT(0);
+            }
+        }
       setSchedulerEventTemp();
       log_time += LETIMER_PERIOD_MS;
     }
@@ -91,17 +92,17 @@ void LETIMER0_IRQHandler(void)
     {
       LETIMER_IntClear(LETIMER0, LETIMER_IFC_COMP1);   //Clear the set interrupt flag
       int_bit = LETIMER0-> IFC;
-            if(int_bit != 0)                          //Check if the bit got cleared
-                 {
-                   LOG_ERROR("\r\nComp1 interrupt not cleared\r\n");
-                   LETIMER0 -> IFC = LETIMER_IFC_COMP1;
+      if(int_bit != 0)                          //Check if the bit got cleared
+        {
+          LOG_ERROR("\r\nComp1 interrupt not cleared\r\n");
+          LETIMER0 -> IFC = LETIMER_IFC_COMP1;
 
-                   if(LETIMER0 -> IFC != 0)
-                     {
-                       LOG_ERROR("\r\nASSERT: Interrupt not cleared\r\n");
-//                       __BKPT(0);
-                     }
-                 }
+          if(LETIMER0 -> IFC != 0)
+            {
+              LOG_ERROR("\r\nASSERT: Interrupt not cleared\r\n");
+              //                       __BKPT(0);
+            }
+        }
       setSchedulerEventDelay();                           //At COMP1 event, set time delay complete event
       LETIMER_IntDisable(LETIMER0, LETIMER_IEN_COMP1);    //Disable the COMP1 interrupt till the time_delay function is not called again
     }
@@ -143,5 +144,40 @@ void I2C0_IRQHandler()
  */
 uint32_t letimerMilliseconds()
 {
-   return log_time;
+  return log_time;
+}
+
+
+/*
+ * Initializes the IRQ in the NVIC for the external button peripheral
+ *
+ * Parameters:
+ *   None
+ *
+ * Returns:
+ *   None
+ */
+void gpio_ext_init()
+{
+  NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);                     //Clear pending GPIO interrupts
+
+  NVIC_EnableIRQ(GPIO_EVEN_IRQn);                           //Enable the GPIO interrupt
+}
+
+/*
+ * ISR for the external push button
+ *
+ * Parameters:
+ *   None
+ *
+ * Returns:
+ *   None
+ */
+void GPIO_EVEN_IRQHandler(void)
+{
+  uint32_t flags = GPIO_IntGet();                 //Get the raised interrupt flag
+
+  GPIO_IntClear(flags);
+
+  setSchedulerEventExternalPushButton();
 }

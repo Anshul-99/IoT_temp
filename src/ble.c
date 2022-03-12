@@ -13,6 +13,8 @@
 #include "src/lcd.h"
 #include "ble_device_type.h"
 #include <math.h>
+#include "src/scheduler.h"
+#include "src/gpio.h"
 
 
 // Include logging specifically for this .c file
@@ -38,6 +40,9 @@
 #define CLIENT_LATENCY (4)
 #define CLIENT_MAX_CE_LENGTH (4)
 #define CLIENT_TIMEOUT (83)
+#define CONFIRM_BONDING (1)
+#define CONFIRM_PASSKEY (1)
+#define BONDING_FLAG (0x2F)
 
 //Data structure instance
 ble_data_struct_t ble_data ;
@@ -99,6 +104,9 @@ ble_data_struct_t* getBleDataPtr()
 void handle_ble_event(sl_bt_msg_t *evt)
 {
   sl_status_t error_status;
+  static bool is_pressed = false;
+  uint8_t button_pressed = 0x01;
+  uint8_t button_released = 0x00;
 
   switch (SL_BT_MSG_ID(evt->header))                                                                           //Switching data on the header information
   {
@@ -107,8 +115,8 @@ void handle_ble_event(sl_bt_msg_t *evt)
     case sl_bt_evt_system_boot_id:
       displayInit();
 
-      displayPrintf(DISPLAY_ROW_NAME, "Server");
-      displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A7");
+      displayPrintf(DISPLAY_ROW_NAME, BLE_DEVICE_TYPE_STRING);
+      displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A8");
 
       error_status =  sl_bt_system_get_identity_address(&ble_data.myAddress, &ble_data.myAddressType);        //On booting event, get the device address
       if(error_status != SL_STATUS_OK)
@@ -130,7 +138,21 @@ void handle_ble_event(sl_bt_msg_t *evt)
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Start Error\r\n");
 
+      uint8_t button_default = 0;
 
+      error_status = sl_bt_gatt_server_write_attribute_value(gattdb_button_state, 0, 1, &button_default);
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nButton Attribute Value Write Error\r\n");
+
+      error_status = sl_bt_sm_delete_bondings();
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError Deleting bonding\r\n");
+      else
+        ble_data.is_bonded = false;
+
+      //      error_status = sl_bt_sm_configure(BONDING_FLAG, sm_io_capability_displayyesno);
+      //      if(error_status != SL_STATUS_OK)
+      //        LOG_ERROR("\r\nBonding Error\r\n");
 
       break;
 
@@ -168,6 +190,8 @@ void handle_ble_event(sl_bt_msg_t *evt)
 
       displayPrintf(DISPLAY_ROW_CONNECTION, "Connected");
 
+      displayPrintf(DISPLAY_ROW_9, " ");
+
       error_status = sl_bt_advertiser_stop(ble_data.advertisingSetHandle);                    //Stop the advertising since a new connection is found
       ble_data.is_connection = true;
       if(error_status != SL_STATUS_OK)
@@ -178,23 +202,69 @@ void handle_ble_event(sl_bt_msg_t *evt)
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Connection Setup Error\r\n");
 
+      error_status = sl_bt_sm_configure(BONDING_FLAG, sm_io_capability_displayyesno);
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nBonding Error\r\n");
+
+      error_status = sl_bt_sm_delete_bondings();
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError Deleting bonding\r\n");
+      else
+        ble_data.is_bonded = false;
+
+      error_status = sl_bt_system_set_soft_timer(TICKS_PER_125_MS , CB_TIMER_HANDLE , REPEATING_BUFFER);     //1 Hz timer, 1 second timer, generates event sl_bt_system_set_soft_timer_id
+      if (error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nSoft Timer Error\r\n");
+
       break;
 
     case sl_bt_evt_connection_closed_id:
       error_status = sl_bt_advertiser_start(ble_data.advertisingSetHandle , sl_bt_advertiser_general_discoverable, sl_bt_advertiser_connectable_scannable);    //When connection is closed, start advertising again
       //      LOG_INFO("\r\nConnection: %d closed due to: %d\r\n", evt->data.evt_connection_closed.connection, evt->data.evt_connection_closed.reason);
       ble_data.is_connection = false;
-      ble_data.is_indication_enabled = false;
-      ble_data.is_indication_in_flight = false;
+      ble_data.is_htm_indication_enabled = false;
+      ble_data.is_custom_indication_enabled = false;
+      ble_data.is_htm_indication_in_flight = false;
       displayPrintf(DISPLAY_ROW_CONNECTION, "Advertising");
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nBluetooth Advertising Start Error\r\n");
 
+      error_status = sl_bt_sm_delete_bondings();
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError Deleting bonding\r\n");
+      else
+        ble_data.is_bonded = false;
+
+      displayPrintf(DISPLAY_ROW_9, " ");
+
+      gpioLed0SetOff();
+      gpioLed1SetOff();
       break;
 
       //Event to clear the LCD charge every second in repeat mode
     case sl_bt_evt_system_soft_timer_id:
-      displayUpdate();
+
+      if(evt->data.evt_system_soft_timer.handle == CB_TIMER_HANDLE)
+        {
+          uint16_t char_handle;
+          uint8_t data[5];
+          size_t data_len;
+          if((get_queue_depth() != 0) && (ble_data.is_htm_indication_in_flight == false))
+            {
+              read_queue(&char_handle, &data_len, data);
+              error_status = sl_bt_gatt_server_send_indication(ble_data.connectionSetHandle, char_handle , data_len , data);
+              if(error_status != SL_STATUS_OK)
+                LOG_ERROR("\r\nError sending indication\r\n");
+              else
+                ble_data.is_htm_indication_in_flight = true;
+            }
+        }
+
+      if(evt->data.evt_system_soft_timer.handle == LCD_TIMER_HANDLE)
+        {
+          displayUpdate();
+        }
+
 
       break;
 
@@ -228,8 +298,48 @@ void handle_ble_event(sl_bt_msg_t *evt)
       break;
 
     case sl_bt_evt_system_external_signal_id:
-      //      ble_data.eventSet =  evt->data.evt_system_external_signal.extsignals;
-      //      LOG_INFO("\r\nExternal interrupt triggered\r\n");
+
+      if(evt->data.evt_system_external_signal.extsignals == event_EXT_BUTTON_Interrupt)
+        {
+          is_pressed = !(is_pressed);
+
+          if((is_pressed == true) && (ble_data.is_connection == true))
+            {
+              displayPrintf(DISPLAY_ROW_9, "Button Pressed");
+              ble_data.button_state = button_pressed;
+              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_button_state, 0, 1, &button_pressed);
+              if(error_status != SL_STATUS_OK)
+                LOG_ERROR("\r\nButton press attribute write error\r\n");
+
+              if ((ble_data.is_bonded == false) && (ble_data.is_connection == true))
+                {
+                  error_status = sl_bt_sm_passkey_confirm(ble_data.connectionSetHandle , 1);
+                  if(error_status != SL_STATUS_OK)
+                    LOG_ERROR("\r\nError confirming passkey\r\n");
+                }
+            }
+          else if (is_pressed == false)
+            {
+              displayPrintf(DISPLAY_ROW_9, "Button Released");
+              ble_data.button_state = button_released;
+              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_button_state, 0, 1, &button_released);
+              if(error_status != SL_STATUS_OK)
+                LOG_ERROR("\r\nButton release attribute write error: %d\r\n", error_status);
+            }
+
+          if((ble_data.is_bonded == true) && (ble_data.is_connection == true) && (ble_data.is_custom_indication_enabled == true) && (ble_data.is_htm_indication_in_flight == false))
+            {
+              error_status = sl_bt_gatt_server_send_indication(ble_data.connectionSetHandle, gattdb_button_state, 1, &ble_data.button_state);
+              if(error_status != SL_STATUS_OK)
+                LOG_ERROR("\r\nButton indication error: %d\r\n", error_status);
+              else
+                ble_data.is_htm_indication_in_flight = true;
+            }
+          else if((ble_data.is_htm_indication_in_flight == true) && (ble_data.is_bonded == true))
+            {
+              write_queue(gattdb_button_state, 1, &ble_data.button_state);
+            }
+        }
 
       break;
 
@@ -261,22 +371,71 @@ void handle_ble_event(sl_bt_msg_t *evt)
       //      })
     case sl_bt_evt_gatt_server_characteristic_status_id:
       if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_indication)) //Indication enabled flag
-        ble_data.is_indication_enabled = true;
-      else
-        ble_data.is_indication_enabled = false;
+        {
+          ble_data.is_htm_indication_enabled = true;
+          gpioLed0SetOn();
+        }
+      else if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_disable))
+        {
+          ble_data.is_htm_indication_enabled = false;
+          gpioLed0SetOff();
+        }
 
-      if (evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement && (evt->data.evt_gatt_server_characteristic_status.status_flags == sl_bt_gatt_server_confirmation))
+
+      if ((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement) && (evt->data.evt_gatt_server_characteristic_status.status_flags == sl_bt_gatt_server_confirmation))
         {
           if(evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_confirmation)
-            ble_data.is_indication_in_flight = false;                                                                          //If the config flag is 0x02, set the indication in flight to false
+            ble_data.is_htm_indication_in_flight = false;                                                                          //If the config flag is 0x02, set the indication in flight to false
+        }
+
+      if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_button_state) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_indication)) //Indication enabled flag
+        {
+          ble_data.is_custom_indication_enabled = true;
+          gpioLed1SetOn();
+        }
+
+      else if ((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_button_state) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_disable))
+        {
+          ble_data.is_custom_indication_enabled = false;
+          gpioLed1SetOff();
+        }
+
+      if ((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_button_state) && (evt->data.evt_gatt_server_characteristic_status.status_flags == sl_bt_gatt_server_confirmation))
+        {
+          if(evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_confirmation)
+            ble_data.is_htm_indication_in_flight = false;                                                                          //If the config flag is 0x02, set the indication in flight to false
         }
       break;
 
     case sl_bt_evt_gatt_server_indication_timeout_id:
       //      LOG_INFO("\r\nBluetooth Client Indication Acknowledgement Time-out\r\n");
-      if(ble_data.is_indication_in_flight == true)
-        ble_data.is_indication_in_flight = false;
+      if(ble_data.is_htm_indication_in_flight == true)
+        ble_data.is_htm_indication_in_flight = false;
+
       ble_data.is_connection = false;
+      break;
+
+    case sl_bt_evt_sm_confirm_bonding_id:
+      error_status = sl_bt_sm_bonding_confirm(ble_data.connectionSetHandle , CONFIRM_BONDING);
+      if(error_status != SL_STATUS_OK)
+        LOG_ERROR("\r\nError setting up default parameters for the connection\r\n");
+      break;
+
+    case sl_bt_evt_sm_bonded_id:
+      displayPrintf(DISPLAY_ROW_CONNECTION, "Bonded");
+      displayPrintf(DISPLAY_ROW_PASSKEY, " ");
+      displayPrintf(DISPLAY_ROW_ACTION, " ");
+      ble_data.is_bonded = true;
+      break;
+
+    case sl_bt_evt_sm_confirm_passkey_id:
+      displayPrintf(DISPLAY_ROW_PASSKEY, "%d", evt->data.evt_sm_confirm_passkey.passkey);
+      displayPrintf(DISPLAY_ROW_ACTION, "Confirm with PB0");
+      break;
+
+    case sl_bt_evt_sm_bonding_failed_id:
+      ble_data.is_bonded = false;
+      LOG_ERROR("\r\nError bonding\r\n");
       break;
 
     default:

@@ -54,7 +54,9 @@ enum display_row {
 // The number of characters per row
 #define DISPLAY_ROW_LEN      20
 
-
+#define TICKS_PER_SECOND (32768)
+#define REPEATING_BUFFER (0)
+#define LCD_TIMER_HANDLE (2)
 
 // function prototypes
 

@@ -17,7 +17,8 @@ typedef enum
   event_DEFUALT = 0,
   event_LETIMER0_UF = 1,
   event_LETIMER0_COMP1 = 2,
-  event_I2C_Transfer_Complete = 4
+  event_I2C_Transfer_Complete = 4,
+  event_EXT_BUTTON_Interrupt = 8
 }schedulerEvents;
 
 //Temperature State machine states
@@ -40,6 +41,9 @@ typedef enum
   state3_INDICATION_ENABLED,
   CLIENT_NUM_STATES
 }client_state_t;
+
+#define QUEUE_DEPTH      (16)
+#define USE_ALL_ENTRIES  (1)
 
 /*
  * Sets an event when interrupt is triggered
@@ -88,6 +92,16 @@ void setSchedulerEventTransferComplete();
  */
 //uint32_t getCurrentEvent();
 
+/* Sets an event when interrupt is triggered for button
+ *
+ * Parameters:
+ *   None
+ *
+ * Returns:
+ *   None
+ */
+void setSchedulerEventExternalPushButton();
+
 
 /*
  * State Machine for temperature measurement
@@ -111,5 +125,34 @@ void temperature_state_machine(sl_bt_msg_t *evt);
  */
 void discovery_state_machine(sl_bt_msg_t *evt);
 
-#endif  //SCHEDULER_H
 
+
+// This is the number of entries in the queue. Please leave
+// this value set to 16.
+
+// Student edit:
+//   define this to 1 if your design uses all array entries
+//   define this to 0 if your design leaves 1 array entry empty
+
+
+
+
+// Modern C (circa 2021 does it this way)
+// typedef <name> is referred to as an anonymous struct definition
+// This is the structure of 1 queue/buffer entry
+typedef struct {
+
+  uint16_t charHandle; // Char handle from gatt_db.h
+  size_t bufferLength; // Length of buffer in bytes to send
+  uint8_t buffer[5]; // The actual data buffer for the indication. Need space for HTM (5 bytes) and button_state (2 bytes) indications, array [0] holds the flags byte.
+
+} queue_struct_t;
+
+
+// function prototypes
+bool     write_queue (uint16_t charHandle , size_t bufferLength , uint8_t indication_data[]);
+bool     read_queue (uint16_t *charHandle , size_t *bufferLength , uint8_t *indication_data);
+void     get_queue_status (uint32_t *_wptr, uint32_t *_rptr, bool *_full, bool *_empty);
+uint32_t get_queue_depth (void);
+
+#endif

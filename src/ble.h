@@ -32,17 +32,24 @@ typedef struct
 
   // values unique for server
   uint8_t advertisingSetHandle;
+  bool is_bonded;
 
   // values unique for client
   uint8_t connectionSetHandle;
   bool is_connection;
-  bool is_indication_in_flight;
-  bool is_indication_enabled;
+  bool is_htm_indication_in_flight;
+  bool is_htm_indication_enabled;
+//  bool is_custom_indication_in_flight;
+  bool is_custom_indication_enabled;
+  uint8_t button_state;
   uint32_t serviceHandle;
   uint16_t characteristicHandle;
   int32_t temp_value;
 } ble_data_struct_t;
 
+
+#define CB_TIMER_HANDLE (3)
+#define TICKS_PER_125_MS (4096)
 /*
  * Gives an instance of the private BLE data structure
  *

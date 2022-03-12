@@ -22,8 +22,12 @@
 
 #define LED0_port  (gpioPortF) // Port F for LED 0
 #define LED0_pin   (4)         //Pin 4 is connected to LED 0
+#define LED1_port  (gpioPortF) // Port F for LED 1
+#define LED1_pin   (5)         //Pin 5 is connected to LED 1
 #define EXTCOMIN_PORT (gpioPortD)
 #define EXTCOMIN_PIN (13)
+#define EXT_BUTTON_PORT (gpioPortF)
+#define EXT_BUTTON_PIN (6)
 
 
 #include "gpio.h"
@@ -36,8 +40,17 @@ void gpioInit()
   GPIO_DriveStrengthSet(LED0_port, gpioDriveStrengthStrongAlternateStrong);
   GPIO_PinModeSet(LED0_port, LED0_pin, gpioModePushPull, false);
 
+  GPIO_DriveStrengthSet(LED1_port, gpioDriveStrengthStrongAlternateStrong);
+  GPIO_PinModeSet(LED1_port, LED1_pin, gpioModePushPull, false);
+
   GPIO_DriveStrengthSet(EXTCOMIN_PORT, gpioDriveStrengthStrongAlternateStrong);
   GPIO_PinModeSet(EXTCOMIN_PORT, EXTCOMIN_PIN, gpioModePushPull, false);
+
+  GPIO_PinModeSet(EXT_BUTTON_PORT, EXT_BUTTON_PIN, gpioModeInputPullFilter, 1);
+
+  GPIO_IntDisable(EXT_BUTTON_PIN);
+
+  GPIO_ExtIntConfig(EXT_BUTTON_PORT, EXT_BUTTON_PIN ,EXT_BUTTON_PIN , true, true, true);
 
 } // gpioInit()
 
@@ -56,6 +69,20 @@ void gpioLed0SetOn()
 }
 
 /*
+ * Turns LED1 on
+ *
+ * Parameters:
+ *  None
+ *
+ * Returns:
+ *   None
+ */
+void gpioLed1SetOn()
+{
+  GPIO_PinOutSet(LED1_port,LED1_pin);
+}
+
+/*
  * Turns LED0 off
  *
  * Parameters:
@@ -67,6 +94,20 @@ void gpioLed0SetOn()
 void gpioLed0SetOff()
 {
   GPIO_PinOutClear(LED0_port,LED0_pin);
+}
+
+/*
+ * Turns LED1 off
+ *
+ * Parameters:
+ *  None
+ *
+ * Returns:
+ *   None
+ */
+void gpioLed1SetOff()
+{
+  GPIO_PinOutClear(LED1_port,LED1_pin);
 }
 
 /*

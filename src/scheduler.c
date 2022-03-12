@@ -19,6 +19,9 @@
 #include "lcd.h"
 #include "ble_device_type.h"
 #include "ble.h"
+#include <stdio.h>
+#include <stdbool.h>
+#include <assert.h>
 
 
 #define INCLUDE_LOG_DEBUG 1
@@ -32,6 +35,18 @@
 
 #define CLIENT_UUID_LEN (2)
 #define CLIENT_UUID (uint8_t [2]){0x09 , 0x18}
+
+#define PTR_OUT_OF_BOUND (-1)
+
+// Declare memory for the queue/buffer/fifo, and the write and read pointers
+queue_struct_t   my_queue[QUEUE_DEPTH]; // the queue
+uint32_t         wptr = 0;              // write pointer
+uint32_t         rptr = 0;              // read pointer
+
+static bool isfull = false;
+static bool isempty = true;
+
+static uint32_t length = 0;
 
 
 /* Sets an event when interrupt is triggered
@@ -94,6 +109,26 @@ void setSchedulerEventTransferComplete()
 }
 
 
+/* Sets an event when interrupt is triggered for button
+ *
+ * Parameters:
+ *   None
+ *
+ * Returns:
+ *   None
+ */
+void setSchedulerEventExternalPushButton()
+{
+  CORE_DECLARE_IRQ_STATE;
+
+  CORE_ENTER_CRITICAL();          //Enter critical section
+
+  sl_bt_external_signal(event_EXT_BUTTON_Interrupt);    //using BLE's stack to set an event
+
+  CORE_EXIT_CRITICAL();          //Exit critical section
+
+}
+
 /*
  * State Machine for temperature measurement
  *
@@ -125,7 +160,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
     case state0_IDLE:
       nextState = state0_IDLE;
 
-      if((bleData->is_connection == true) && (bleData->is_indication_enabled ==  true))
+      if(bleData->is_connection == true)
         {
           if (evt->data.evt_system_external_signal.extsignals == event_LETIMER0_UF)
             {
@@ -135,6 +170,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
               nextState = state1_COMP1_POWER_ON;
             }
         }
+
       else
         displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
       break;
@@ -142,7 +178,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
     case state1_COMP1_POWER_ON:
       nextState = state1_COMP1_POWER_ON;
 
-      if((bleData->is_connection == true) && (bleData->is_indication_enabled ==  true))
+      if((bleData->is_connection == true) && (bleData->is_htm_indication_enabled ==  true))
         {
           if(evt->data.evt_system_external_signal.extsignals == event_LETIMER0_COMP1)                             //Event when the timer delay elapses
             {
@@ -153,6 +189,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
               nextState = state2_I2C_TRANSFER_COMPLETE;
             }
         }
+
       else
         {
           nextState = state0_IDLE;
@@ -165,8 +202,9 @@ void temperature_state_machine(sl_bt_msg_t *evt)
     case state2_I2C_TRANSFER_COMPLETE:
       nextState = state2_I2C_TRANSFER_COMPLETE;
 
-      if((bleData->is_connection == true) && (bleData->is_indication_enabled ==  true))
+      if((bleData->is_connection == true) && (bleData->is_htm_indication_enabled ==  true))
         {
+
           if(evt->data.evt_system_external_signal.extsignals == event_I2C_Transfer_Complete)                    //Event when the I2C transfer is completed
             {
               sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);      //Pull MCU out of EM1 mode
@@ -175,7 +213,9 @@ void temperature_state_machine(sl_bt_msg_t *evt)
 
               nextState = state3_COMP1_I2C_TRANSFER_COMPLETE;
             }
+
         }
+
       else
         {
           nextState = state0_IDLE;
@@ -188,8 +228,10 @@ void temperature_state_machine(sl_bt_msg_t *evt)
     case state3_COMP1_I2C_TRANSFER_COMPLETE:
       nextState = state3_COMP1_I2C_TRANSFER_COMPLETE;
 
-      if((bleData->is_connection == true) && (bleData->is_indication_enabled ==  true))
+
+      if((bleData->is_connection == true) && (bleData->is_htm_indication_enabled ==  true))
         {
+
           if(evt->data.evt_system_external_signal.extsignals == event_LETIMER0_COMP1)                       //Event when the write sequence is written
             {
               sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);   //While transfer is in progress, put the MCU in EM1 energy mode
@@ -198,7 +240,9 @@ void temperature_state_machine(sl_bt_msg_t *evt)
 
               nextState = state4_UNDERFLOW_READ;
             }
+
         }
+
       else
         {
           nextState = state0_IDLE;
@@ -209,7 +253,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
     case state4_UNDERFLOW_READ:
       nextState = state4_UNDERFLOW_READ;
 
-      if((bleData->is_connection == true) && (bleData->is_indication_enabled ==  true))
+      if((bleData->is_connection == true) && (bleData->is_htm_indication_enabled ==  true))
         {
           if(evt->data.evt_system_external_signal.extsignals == event_I2C_Transfer_Complete)             //Event when the I2C transfer is completed
             {
@@ -236,13 +280,17 @@ void temperature_state_machine(sl_bt_msg_t *evt)
 
 
               //Only send indication if there is a connection present, if the indicate button is enabled on the GUI and no other indication is in flight
-              if((bleData->is_connection == true) && (bleData->is_indication_enabled ==  true) && (bleData->is_indication_in_flight == false))
+              if((bleData->is_htm_indication_in_flight == false))
                 {
                   error_status = sl_bt_gatt_server_send_indication(bleData->connectionSetHandle, gattdb_temperature_measurement, 5, &htm_temperature_buffer[0]);   //Send an indication with the temperature data buffer
                   if(error_status != SL_STATUS_OK)
                     LOG_ERROR("\r\nSending Indication Error\r\n");
                   else
-                    bleData->is_indication_in_flight = true;      //Set the flag to true if indication was sent
+                    bleData->is_htm_indication_in_flight = true;      //Set the flag to true if indication was sent
+                }
+              else
+                {
+                  write_queue(gattdb_temperature_measurement, sizeof(htm_temperature_buffer), htm_temperature_buffer);
                 }
             }
           nextState = state0_IDLE;
@@ -390,3 +438,155 @@ void discovery_state_machine(sl_bt_msg_t *evt)
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+/*
+ * Computes the next pointer
+ *
+ * Parameters:
+ *   ptr: Current pointer location
+ *
+ * Returns:
+ *   Incremented pointer
+ */
+static uint32_t nextPtr(uint32_t ptr) {
+
+
+  if(ptr >= QUEUE_DEPTH)                    //If pointer is greater than the maximum depth, return an error
+    return PTR_OUT_OF_BOUND;
+
+
+  else if((ptr + 1) == QUEUE_DEPTH)         //If the queue is full, wrap the pointer to the front
+    return 0;
+
+  else                                     //If the queue is not full, return the incremented pointer
+    return ptr + 1;
+
+} // nextPtr()
+
+
+
+/*
+ *Writes to the
+ *
+ * Parameters:
+ *   charHandle: The characteristic handle
+ *   bufferLength: The length of data to be written
+ *   indication_data[]: Data buffer to be written in the queue
+ *
+ * Returns:
+ *   If the queue is full(true) or not(false)
+ */
+bool write_queue (uint16_t charHandle , size_t bufferLength , uint8_t indication_data[])
+{
+
+  if (isfull)                           //If full flag is set, return true
+    return true;
+
+  my_queue[wptr].charHandle = charHandle;
+  my_queue[wptr].bufferLength = bufferLength;
+  memcpy(my_queue[wptr].buffer , indication_data , bufferLength);
+
+  length++;                            //Increment length
+
+  isempty = false;                     //Reset empty flag since a successful entry has been made
+
+  if(length == QUEUE_DEPTH)            //Check if queue is full
+    isfull = true;
+
+  if (!isfull)                        //If the queue is not full, increment the write pointer
+    wptr = nextPtr(wptr);
+
+  return false;
+
+} // write_queue()
+
+
+
+/*
+ * Reads the queue
+ *
+ * Parameters:
+ *   *charHandle: The characteristic handle pointer
+ *   *bufferLength: The length of data to be written pointer
+ *   *indication_data[]: Data buffer to be read from the queue pointer
+ *
+ * Returns:
+ *   If the queue is full or not
+ */
+bool read_queue (uint16_t *charHandle , size_t *bufferLength , uint8_t *indication_data) {
+
+  if (isempty)                     //If empty flag is set, returns true
+    return true;
+
+
+  *charHandle = my_queue[rptr].charHandle;
+  *bufferLength = my_queue[rptr].bufferLength;
+  memcpy(indication_data , my_queue[rptr].buffer , my_queue[rptr].bufferLength);
+
+  length--;                      //Decrement the length
+
+  if(isfull)                     //If previously the queue was full, now since one place is available, increment the write pointer
+    wptr = nextPtr(wptr);
+
+  isfull = false;                //Reset the full flag since one entry has been popped from the queue
+
+  rptr = nextPtr(rptr);          //Process the read pointer
+
+  if(wptr == rptr)               //Empty condition
+    isempty = true;
+
+  return false;
+
+} // read_queue()
+
+
+
+/*
+ * Gets the queue status
+ *
+ * Parameters:
+ *   *wptr: Write pointer value
+ *   *rptr: Read pointer value
+ *   *full: Whether full or not
+ *   *empty: Whether empty or not
+ *
+ * Returns:
+ *   None
+ */
+void get_queue_status (uint32_t *_wptr, uint32_t *_rptr, bool *_full, bool *_empty)
+{
+
+  *_wptr = wptr;
+  *_rptr = rptr;
+
+  *_full = isfull;
+  *_empty = isempty;
+
+} // get_queue_status()
+
+
+
+/*
+ * Returns the queue length
+ *
+ * Parameters:
+ *   None
+ *
+ * Returns:
+ *   Length of the queue
+ */
+uint32_t get_queue_depth()
+{
+
+  return length;          //Returns length
+
+} // get_queue_depth()

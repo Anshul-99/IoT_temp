@@ -172,7 +172,12 @@ SL_WEAK void app_init(void)
     default: break;
   }
 
+
   oscillator_init();                //Initialize the oscillator tree
+
+  gpioInit();
+
+  gpio_ext_init();
 
   letimer_init();                   //Initialize the LETIMER0 peripheral
 

@@ -162,6 +162,10 @@ void gpio_ext_init()
   NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);                     //Clear pending GPIO interrupts
 
   NVIC_EnableIRQ(GPIO_EVEN_IRQn);                           //Enable the GPIO interrupt
+
+  NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);                     //Clear pending GPIO interrupts
+
+  NVIC_EnableIRQ(GPIO_ODD_IRQn);                           //Enable the GPIO interrupt
 }
 
 /*
@@ -179,5 +183,23 @@ void GPIO_EVEN_IRQHandler(void)
 
   GPIO_IntClear(flags);
 
-  setSchedulerEventExternalPushButton();
+  setSchedulerEventExternalPushButton0();
+}
+
+/*
+ * ISR for the external push button
+ *
+ * Parameters:
+ *   None
+ *
+ * Returns:
+ *   None
+ */
+void GPIO_ODD_IRQHandler(void)
+{
+  uint32_t flags = GPIO_IntGet();                 //Get the raised interrupt flag
+
+  GPIO_IntClear(flags);
+
+  setSchedulerEventExternalPushButton1();
 }

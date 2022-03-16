@@ -28,6 +28,8 @@
 #define EXTCOMIN_PIN (13)
 #define EXT_BUTTON_PORT (gpioPortF)
 #define EXT_BUTTON_PIN (6)
+#define EXT_BUTTON_1_PORT (gpioPortF)
+#define EXT_BUTTON_1_PIN (7)
 
 
 #include "gpio.h"
@@ -51,6 +53,12 @@ void gpioInit()
   GPIO_IntDisable(EXT_BUTTON_PIN);
 
   GPIO_ExtIntConfig(EXT_BUTTON_PORT, EXT_BUTTON_PIN ,EXT_BUTTON_PIN , true, true, true);
+
+  GPIO_PinModeSet(EXT_BUTTON_1_PORT, EXT_BUTTON_1_PIN, gpioModeInputPullFilter, 1);
+
+  GPIO_IntDisable(EXT_BUTTON_1_PIN);
+
+  GPIO_ExtIntConfig(EXT_BUTTON_1_PORT, EXT_BUTTON_1_PIN ,EXT_BUTTON_1_PIN , true, true, true);
 
 } // gpioInit()
 

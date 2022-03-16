@@ -39,12 +39,14 @@ typedef struct
   bool is_connection;
   bool is_htm_indication_in_flight;
   bool is_htm_indication_enabled;
-//  bool is_custom_indication_in_flight;
   bool is_custom_indication_enabled;
   uint8_t button_state;
-  uint32_t serviceHandle;
-  uint16_t characteristicHandle;
+  uint32_t htmServiceHandle;
+  uint32_t buttonServiceHandle;
+  uint16_t htmCharacteristicHandle;
+  uint16_t buttonCharacteristicHandle;
   int32_t temp_value;
+  uint32_t indication_flag;
 } ble_data_struct_t;
 
 

@@ -11,6 +11,20 @@
 #define SCHEDULER_H
 
 #include "src/ble.h"
+
+
+
+#define HTM_SERVICE_UUID_LEN (2)
+#define HTM_SERVICE_UUID (uint8_t [2]){0x09 , 0x18}
+
+#define BUTTON_SERVICE_UUID (uint8_t [16]) { 0x89, 0x62, 0x13, 0x2d, 0x2a, 0x65, 0xec, 0x87, 0x3e, 0x43, 0xc8, 0x38, 0x01, 0x00, 0x00, 0x00 }
+#define BUTTON_SERVICE_UUID_LEN (16)
+
+
+#define BUTTON_CHAR_UUID (uint8_t [16]){0x89, 0x62, 0x13, 0x2d, 0x2a, 0x65, 0xec, 0x87, 0x3e, 0x43, 0xc8, 0x38, 0x02, 0x00, 0x00, 0x00}
+
+#define HTM_CHAR_UUID (uint8_t [2]){0x1C , 0x2A}
+
 //Event enum
 typedef enum
 {
@@ -18,7 +32,8 @@ typedef enum
   event_LETIMER0_UF = 1,
   event_LETIMER0_COMP1 = 2,
   event_I2C_Transfer_Complete = 4,
-  event_EXT_BUTTON_Interrupt = 8
+  event_EXT_BUTTON0_Interrupt = 8,
+  event_EXT_BUTTON1_Interrupt = 16
 }schedulerEvents;
 
 //Temperature State machine states
@@ -36,8 +51,11 @@ typedef enum
 typedef enum
 {
   state0_NO_CONNECTION,
-  state1_SERVICE_DISCOVERED,
+  state0_BUTTON_SERVICE_DISCOVERY,
+  state1_TEMP_SERVICE_DISCOVERED,
+  state1_BUTTON_SERVICE_DISCOVERED,
   state2_TEMP_MEASUREMENT_CHAR_ENABLED,
+  state2_BUTTON_MEASUREMENT_CHAR_ENABLED,
   state3_INDICATION_ENABLED,
   CLIENT_NUM_STATES
 }client_state_t;
@@ -92,7 +110,7 @@ void setSchedulerEventTransferComplete();
  */
 //uint32_t getCurrentEvent();
 
-/* Sets an event when interrupt is triggered for button
+/* Sets an event when interrupt is triggered for button 0
  *
  * Parameters:
  *   None
@@ -100,8 +118,18 @@ void setSchedulerEventTransferComplete();
  * Returns:
  *   None
  */
-void setSchedulerEventExternalPushButton();
+void setSchedulerEventExternalPushButton0();
 
+
+/* Sets an event when interrupt is triggered for button 1
+ *
+ * Parameters:
+ *   None
+ *
+ * Returns:
+ *   None
+ */
+void setSchedulerEventExternalPushButton1();
 
 /*
  * State Machine for temperature measurement

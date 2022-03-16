@@ -358,6 +358,7 @@ void discovery_state_machine(sl_bt_msg_t *evt)
       if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_opened_id)
         {
           nextState = state0_BUTTON_SERVICE_DISCOVERY;
+//          nextState = state1_TEMP_SERVICE_DISCOVERED;
           displayPrintf(DISPLAY_ROW_CONNECTION, "Connected");
 
           displayPrintf(DISPLAY_ROW_BTADDR2,"%02x:%02x:%02x:%02x:%02x:%02x",SERVER_BT_ADDRESS.addr[5], SERVER_BT_ADDRESS.addr[4], SERVER_BT_ADDRESS.addr[3], SERVER_BT_ADDRESS.addr[2] , SERVER_BT_ADDRESS.addr[1], SERVER_BT_ADDRESS.addr[0]);
@@ -386,6 +387,7 @@ void discovery_state_machine(sl_bt_msg_t *evt)
       if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id)
         {
           nextState = state1_TEMP_SERVICE_DISCOVERED;
+//          nextState = state1_BUTTON_SERVICE_DISCOVERED;
 
           error_status = sl_bt_gatt_discover_primary_services_by_uuid(bleData->connectionSetHandle, BUTTON_SERVICE_UUID_LEN, BUTTON_SERVICE_UUID);
           if(error_status != SL_STATUS_OK)
@@ -414,6 +416,7 @@ void discovery_state_machine(sl_bt_msg_t *evt)
       if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id)
         {
           nextState = state1_BUTTON_SERVICE_DISCOVERED;
+//          nextState = state2_TEMP_MEASUREMENT_CHAR_ENABLED;
 
           error_status = sl_bt_gatt_discover_characteristics_by_uuid(bleData->connectionSetHandle, bleData->htmServiceHandle, sizeof(HTM_CHAR_UUID), HTM_CHAR_UUID );
           if(error_status != SL_STATUS_OK)
@@ -442,6 +445,7 @@ void discovery_state_machine(sl_bt_msg_t *evt)
       if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id)
         {
           nextState = state2_TEMP_MEASUREMENT_CHAR_ENABLED;
+//          nextState = state2_BUTTON_MEASUREMENT_CHAR_ENABLED;
 
           error_status = sl_bt_gatt_discover_characteristics_by_uuid(bleData->connectionSetHandle, bleData->buttonServiceHandle, sizeof(BUTTON_CHAR_UUID), BUTTON_CHAR_UUID);
           if(error_status != SL_STATUS_OK)
@@ -469,6 +473,8 @@ void discovery_state_machine(sl_bt_msg_t *evt)
       if(SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id)
         {
           nextState = state2_BUTTON_MEASUREMENT_CHAR_ENABLED;
+//          nextState = state0_BUTTON_SERVICE_DISCOVERY;
+
           error_status = sl_bt_gatt_set_characteristic_notification(bleData->connectionSetHandle, bleData->htmCharacteristicHandle, sl_bt_gatt_indication);
           if(error_status != SL_STATUS_OK)
             LOG_ERROR("\r\nError setting up characteristic notification\r\n");

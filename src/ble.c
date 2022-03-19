@@ -245,6 +245,8 @@ void handle_ble_event(sl_bt_msg_t *evt)
         ble_data.is_bonded = false;
 
       displayPrintf(DISPLAY_ROW_9, " ");
+      displayPrintf(DISPLAY_ROW_PASSKEY, " ");
+      displayPrintf(DISPLAY_ROW_ACTION, " ");
 
       gpioLed0SetOff();
       gpioLed1SetOff();
@@ -686,6 +688,8 @@ void handle_ble_event(sl_bt_msg_t *evt)
         LOG_ERROR("\r\nError Deleting bonding\r\n");
       else
         ble_data.is_bonded = false;
+      displayPrintf(DISPLAY_ROW_PASSKEY, " ");
+      displayPrintf(DISPLAY_ROW_ACTION, " ");
       break;
 
     case sl_bt_evt_sm_bonded_id:

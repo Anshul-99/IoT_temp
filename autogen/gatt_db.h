@@ -22,13 +22,9 @@ extern const sli_bt_gattdb_t gattdb;
 #define gattdb_system_id                      28
 #define gattdb_ieee_11073_20601_regulatory_certification_data_list 30
 #define gattdb_pnp_id                         32
-#define gattdb_temperature_measurement        35
-#define gattdb_temperature_type               38
-#define gattdb_intermediate_temperature       40
-#define gattdb_measurement_interval           43
-#define gattdb_valid_range                    45
-#define gattdb_button_state                   48
-#define gattdb_ota_control                    52
+#define gattdb_rgb_state                      35
+#define gattdb_gesture_state                  39
+#define gattdb_ota_control                    43
 
 
 #endif // __GATT_DB_H

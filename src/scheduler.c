@@ -208,7 +208,6 @@ void temperature_state_machine(sl_bt_msg_t *evt)
               nextState = state2_I2C_TRANSFER_COMPLETE;
             }
         }
-
       else
         {
           nextState = state0_IDLE;
@@ -232,7 +231,6 @@ void temperature_state_machine(sl_bt_msg_t *evt)
 
               nextState = state3_COMP1_I2C_TRANSFER_COMPLETE;
             }
-
         }
 
       else
@@ -293,7 +291,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
 
               //Only write to local GATT database if there is a connection present, if the indicate button is enabled on the GUI
 
-              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_temperature_measurement,  0,  5,  p);          //Update the local GATT database
+              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_rgb_state,  0,  5,  p);          //Update the local GATT database
               if(error_status != SL_STATUS_OK)
                 LOG_ERROR("\r\nUpdating Local Gatt-Database Error\r\n");
 
@@ -301,7 +299,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
               //Only send indication if there is a connection present, if the indicate button is enabled on the GUI and no other indication is in flight
               if((bleData->is_htm_indication_in_flight == false))
                 {
-                  error_status = sl_bt_gatt_server_send_indication(bleData->connectionSetHandle, gattdb_temperature_measurement, 5, &htm_temperature_buffer[0]);   //Send an indication with the temperature data buffer
+                  error_status = sl_bt_gatt_server_send_indication(bleData->connectionSetHandle, gattdb_rgb_state, 5, &htm_temperature_buffer[0]);   //Send an indication with the temperature data buffer
                   if(error_status != SL_STATUS_OK)
                     LOG_ERROR("\r\nSending Indication Error: %d\r\n", error_status);
                   else
@@ -309,7 +307,7 @@ void temperature_state_machine(sl_bt_msg_t *evt)
                 }
               else
                 {
-                  write_queue(gattdb_temperature_measurement, sizeof(htm_temperature_buffer), htm_temperature_buffer);
+                  write_queue(gattdb_rgb_state, sizeof(htm_temperature_buffer), htm_temperature_buffer);
                 }
             }
           nextState = state0_IDLE;
@@ -362,7 +360,7 @@ void discovery_state_machine(sl_bt_msg_t *evt)
           displayPrintf(DISPLAY_ROW_CONNECTION, "Connected");
 
           displayPrintf(DISPLAY_ROW_BTADDR2,"%02x:%02x:%02x:%02x:%02x:%02x",SERVER_BT_ADDRESS.addr[5], SERVER_BT_ADDRESS.addr[4], SERVER_BT_ADDRESS.addr[3], SERVER_BT_ADDRESS.addr[2] , SERVER_BT_ADDRESS.addr[1], SERVER_BT_ADDRESS.addr[0]);
-          error_status = sl_bt_gatt_discover_primary_services_by_uuid(bleData->connectionSetHandle, HTM_SERVICE_UUID_LEN , HTM_SERVICE_UUID);
+          error_status = sl_bt_gatt_discover_primary_services_by_uuid(bleData->connectionSetHandle, RGB_SERVICE_UUID_LEN , RGB_SERVICE_UUID);
           if(error_status != SL_STATUS_OK)
             LOG_ERROR("\r\nError discovering a service - HTM\r\n");
 
@@ -390,7 +388,7 @@ void discovery_state_machine(sl_bt_msg_t *evt)
           //          nextState = state1_BUTTON_SERVICE_DISCOVERED;
           nextState = state2_TEMP_MEASUREMENT_CHAR_ENABLED;
 
-          error_status = sl_bt_gatt_discover_characteristics_by_uuid(bleData->connectionSetHandle, bleData->htmServiceHandle, sizeof(HTM_CHAR_UUID), HTM_CHAR_UUID );
+          error_status = sl_bt_gatt_discover_characteristics_by_uuid(bleData->connectionSetHandle, bleData->htmServiceHandle, sizeof(RGB_CHAR_UUID), RGB_CHAR_UUID );
           if(error_status != SL_STATUS_OK)
             LOG_ERROR("\r\nError discovering a characteristic - TEMPERATURE MEASUREMENT\r\n");
         }
@@ -448,7 +446,7 @@ void discovery_state_machine(sl_bt_msg_t *evt)
           //          nextState = state1_TEMP_SERVICE_DISCOVERED;
           nextState = state1_BUTTON_SERVICE_DISCOVERED;
 
-          error_status = sl_bt_gatt_discover_primary_services_by_uuid(bleData->connectionSetHandle, BUTTON_SERVICE_UUID_LEN, BUTTON_SERVICE_UUID);
+          error_status = sl_bt_gatt_discover_primary_services_by_uuid(bleData->connectionSetHandle, GESTURE_SERVICE_UUID_LEN, GESTURE_SERVICE_UUID);
           if(error_status != SL_STATUS_OK)
             LOG_ERROR("\r\nError discovering a service - BUTTON\r\n");
         }
@@ -470,7 +468,6 @@ void discovery_state_machine(sl_bt_msg_t *evt)
       break;
 
 
-
     case state1_BUTTON_SERVICE_DISCOVERED:
       nextState = state1_BUTTON_SERVICE_DISCOVERED;
 
@@ -479,7 +476,7 @@ void discovery_state_machine(sl_bt_msg_t *evt)
           //          nextState = state2_TEMP_MEASUREMENT_CHAR_ENABLED;
           nextState = state2_BUTTON_MEASUREMENT_CHAR_ENABLED;
 
-          error_status = sl_bt_gatt_discover_characteristics_by_uuid(bleData->connectionSetHandle, bleData->buttonServiceHandle, sizeof(BUTTON_CHAR_UUID), BUTTON_CHAR_UUID);
+          error_status = sl_bt_gatt_discover_characteristics_by_uuid(bleData->connectionSetHandle, bleData->buttonServiceHandle, sizeof(GESTURE_CHAR_UUID), GESTURE_CHAR_UUID);
           if(error_status != SL_STATUS_OK)
             LOG_ERROR("\r\nError discovering a characteristic - BUTTON\r\n");
         }
@@ -497,8 +494,6 @@ void discovery_state_machine(sl_bt_msg_t *evt)
             }
         }
       break;
-
-
 
 
     case state2_BUTTON_MEASUREMENT_CHAR_ENABLED:
@@ -550,7 +545,7 @@ void discovery_state_machine(sl_bt_msg_t *evt)
 }
 
 /*
- * Computes the next pointer
+ * Computes the next pointer in the circular buffer
  *
  * Parameters:
  *   ptr: Current pointer location
@@ -576,7 +571,7 @@ static uint32_t nextPtr(uint32_t ptr) {
 
 
 /*
- *Writes to the
+ *Writes to the circular buffer
  *
  * Parameters:
  *   charHandle: The characteristic handle
@@ -613,7 +608,7 @@ bool write_queue (uint16_t charHandle , size_t bufferLength , uint8_t indication
 
 
 /*
- * Reads the queue
+ * Reads the circular buffer
  *
  * Parameters:
  *   *charHandle: The characteristic handle pointer

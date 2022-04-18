@@ -15,6 +15,7 @@
 #include <math.h>
 #include "src/scheduler.h"
 #include "src/gpio.h"
+#include "string.h"
 
 
 // Include logging specifically for this .c file
@@ -149,7 +150,7 @@ void handle_ble_event(sl_bt_msg_t *evt)
 
       uint8_t button_default = 0;
 
-      error_status = sl_bt_gatt_server_write_attribute_value(gattdb_button_state, 0, 1, &button_default);
+      error_status = sl_bt_gatt_server_write_attribute_value(gattdb_gesture_state, 0, 1, &button_default);
       if(error_status != SL_STATUS_OK)
         LOG_ERROR("\r\nButton Attribute Value Write Error\r\n");
 
@@ -334,7 +335,7 @@ void handle_ble_event(sl_bt_msg_t *evt)
             {
               displayPrintf(DISPLAY_ROW_9, "Button Pressed");
               ble_data.button_state = button_pressed;
-              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_button_state, 0, 1, &button_pressed);
+              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_gesture_state, 0, 1, &button_pressed);
               if(error_status != SL_STATUS_OK)
                 LOG_ERROR("\r\nButton press attribute write error\r\n");
 
@@ -349,14 +350,14 @@ void handle_ble_event(sl_bt_msg_t *evt)
             {
               displayPrintf(DISPLAY_ROW_9, "Button Released");
               ble_data.button_state = button_released;
-              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_button_state, 0, 1, &button_released);
+              error_status = sl_bt_gatt_server_write_attribute_value(gattdb_gesture_state, 0, 1, &button_released);
               if(error_status != SL_STATUS_OK)
                 LOG_ERROR("\r\nButton release attribute write error: %d\r\n", error_status);
             }
 
           if((ble_data.is_bonded == true) && (ble_data.is_connection == true) && (ble_data.is_custom_indication_enabled == true) && (ble_data.is_htm_indication_in_flight == false))
             {
-              error_status = sl_bt_gatt_server_send_indication(ble_data.connectionSetHandle, gattdb_button_state, 1, &ble_data.button_state);
+              error_status = sl_bt_gatt_server_send_indication(ble_data.connectionSetHandle, gattdb_gesture_state, 1, &ble_data.button_state);
               if(error_status != SL_STATUS_OK)
                 LOG_ERROR("\r\nButton indication error: %d\r\n", error_status);
               else
@@ -364,7 +365,7 @@ void handle_ble_event(sl_bt_msg_t *evt)
             }
           else if((ble_data.is_htm_indication_in_flight == true) && (ble_data.is_bonded == true))
             {
-              write_queue(gattdb_button_state, 1, &ble_data.button_state);
+              write_queue(gattdb_gesture_state, 1, &ble_data.button_state);
               //              write_queue(gattdb_button_state, 2, &ble_data.button_state);
             }
         }
@@ -398,37 +399,37 @@ void handle_ble_event(sl_bt_msg_t *evt)
       //        uint16_t client_config;       /**< The handle of client-config descriptor. */
       //      })
     case sl_bt_evt_gatt_server_characteristic_status_id:
-      if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_indication)) //Indication enabled flag
+      if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_rgb_state) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_indication)) //Indication enabled flag
         {
           ble_data.is_htm_indication_enabled = true;
           gpioLed0SetOn();
         }
-      else if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_disable))
+      else if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_rgb_state) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_disable))
         {
           ble_data.is_htm_indication_enabled = false;
           gpioLed0SetOff();
         }
 
 
-      if ((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_temperature_measurement) && (evt->data.evt_gatt_server_characteristic_status.status_flags == sl_bt_gatt_server_confirmation))
+      if ((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_rgb_state) && (evt->data.evt_gatt_server_characteristic_status.status_flags == sl_bt_gatt_server_confirmation))
         {
           if(evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_confirmation)
             ble_data.is_htm_indication_in_flight = false;                                                                          //If the config flag is 0x02, set the indication in flight to false
         }
 
-      if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_button_state) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_indication)) //Indication enabled flag
+      if((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_gesture_state) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_indication)) //Indication enabled flag
         {
           ble_data.is_custom_indication_enabled = true;
           gpioLed1SetOn();
         }
 
-      else if ((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_button_state) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_disable))
+      else if ((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_gesture_state) && (evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_disable))
         {
           ble_data.is_custom_indication_enabled = false;
           gpioLed1SetOff();
         }
 
-      if ((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_button_state) && (evt->data.evt_gatt_server_characteristic_status.status_flags == sl_bt_gatt_server_confirmation))
+      if ((evt->data.evt_gatt_server_characteristic_status.characteristic == gattdb_gesture_state) && (evt->data.evt_gatt_server_characteristic_status.status_flags == sl_bt_gatt_server_confirmation))
         {
           if(evt->data.evt_gatt_server_characteristic_status.client_config_flags == sl_bt_gatt_server_confirmation)
             ble_data.is_htm_indication_in_flight = false;                                                                          //If the config flag is 0x02, set the indication in flight to false
@@ -524,28 +525,47 @@ void handle_ble_event(sl_bt_msg_t *evt)
 
     case  sl_bt_evt_gatt_service_id:
 
-      if((evt->data.evt_gatt_service.uuid.data[0] == HTM_SERVICE_UUID[0]) && (evt->data.evt_gatt_service.uuid.len == HTM_SERVICE_UUID_LEN))
+      //      if((evt->data.evt_gatt_service.uuid.data[0] == RGB_SERVICE_UUID[0]) && (evt->data.evt_gatt_service.uuid.len == RGB_SERVICE_UUID_LEN))
+      //        {
+      //          ble_data.htmServiceHandle = evt->data.evt_gatt_service.service;
+      //        }
+      //
+      //
+      //      else if((evt->data.evt_gatt_service.uuid.data[0] == GESTURE_SERVICE_UUID[0]) && (evt->data.evt_gatt_service.uuid.len == GESTURE_SERVICE_UUID_LEN))
+      //        {
+      //          ble_data.buttonServiceHandle = evt->data.evt_gatt_service.service;
+      //        }
+      if((memcmp(evt->data.evt_gatt_service.uuid.data , RGB_SERVICE_UUID, RGB_SERVICE_UUID_LEN ) == 0))
         {
           ble_data.htmServiceHandle = evt->data.evt_gatt_service.service;
         }
 
 
-      else if((evt->data.evt_gatt_service.uuid.data[0] == BUTTON_SERVICE_UUID[0]) && (evt->data.evt_gatt_service.uuid.len == BUTTON_SERVICE_UUID_LEN))
+      else if((memcmp(evt->data.evt_gatt_service.uuid.data , GESTURE_SERVICE_UUID, GESTURE_SERVICE_UUID_LEN ) == 0))
         {
           ble_data.buttonServiceHandle = evt->data.evt_gatt_service.service;
         }
-
       break;
 
     case sl_bt_evt_gatt_characteristic_id:
       //      ble_data.htmCharacteristicHandle = evt->data.evt_gatt_characteristic.characteristic;
 
-      if((evt->data.evt_gatt_characteristic.uuid.data[0] == HTM_CHAR_UUID[0]))
+      //      if((evt->data.evt_gatt_characteristic.uuid.data[0] == RGB_CHAR_UUID[0]))
+      //        {
+      //          ble_data.htmCharacteristicHandle = evt->data.evt_gatt_characteristic.characteristic;
+      //        }
+      //
+      //      else if((evt->data.evt_gatt_characteristic.uuid.data[0] == GESTURE_CHAR_UUID[0]))
+      //        {
+      //          ble_data.buttonCharacteristicHandle = evt->data.evt_gatt_characteristic.characteristic;
+      //        }
+
+      if(memcmp(evt->data.evt_gatt_characteristic.uuid.data , RGB_CHAR_UUID , 16) == 0)
         {
           ble_data.htmCharacteristicHandle = evt->data.evt_gatt_characteristic.characteristic;
         }
 
-      else if((evt->data.evt_gatt_characteristic.uuid.data[0] == BUTTON_CHAR_UUID[0]))
+      else if(memcmp(evt->data.evt_gatt_characteristic.uuid.data , GESTURE_CHAR_UUID , 16) == 0)
         {
           ble_data.buttonCharacteristicHandle = evt->data.evt_gatt_characteristic.characteristic;
         }
@@ -644,7 +664,7 @@ void handle_ble_event(sl_bt_msg_t *evt)
 
     case sl_bt_evt_gatt_characteristic_value_id:
 
-      if((evt->data.evt_gatt_characteristic_value.characteristic == gattdb_button_state))
+      if((evt->data.evt_gatt_characteristic_value.characteristic == gattdb_gesture_state))
         {
           if(evt->data.evt_gatt_characteristic_value.att_opcode == sl_bt_gatt_handle_value_indication)
             {
@@ -670,7 +690,7 @@ void handle_ble_event(sl_bt_msg_t *evt)
             }
 
         }
-      if((evt->data.evt_gatt_characteristic_value.characteristic == gattdb_temperature_measurement))
+      if((evt->data.evt_gatt_characteristic_value.characteristic == gattdb_rgb_state))
         {
           error_status = sl_bt_gatt_send_characteristic_confirmation(ble_data.connectionSetHandle);
           if(error_status != SL_STATUS_OK)
@@ -690,6 +710,8 @@ void handle_ble_event(sl_bt_msg_t *evt)
         ble_data.is_bonded = false;
       displayPrintf(DISPLAY_ROW_PASSKEY, " ");
       displayPrintf(DISPLAY_ROW_ACTION, " ");
+      displayPrintf(DISPLAY_ROW_9, " ");
+      displayPrintf(DISPLAY_ROW_TEMPVALUE, " ");
       break;
 
     case sl_bt_evt_sm_bonded_id:
